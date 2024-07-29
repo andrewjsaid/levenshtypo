@@ -4,6 +4,7 @@ namespace Levenshtypo;
 
 public static class LevenshteinDistance
 {
+
     public static int CalculateCaseSensitive(ReadOnlySpan<char> a, ReadOnlySpan<char> b)
     {
         const int MaxStackallocBytes = 16 * 4;
@@ -109,4 +110,5 @@ public static class LevenshteinDistance
 
         return d0[b.Length];
     }
+
 }

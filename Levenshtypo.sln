@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35103.136
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Levenshtypo", "src\Levenshtypo.csproj", "{5D0A4CEB-27BF-43AB-A969-DCF9AE5FF650}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Levenshtypo", "src\Levenshtypo\Levenshtypo.csproj", "{5D0A4CEB-27BF-43AB-A969-DCF9AE5FF650}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Levenshtypo.Tests", "Levenshtypo.Tests\Levenshtypo.Tests.csproj", "{CA6805AC-C5C4-4EBF-8768-0B11166124A9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Levenshtypo.Tests", "src\Levenshtypo.Tests\Levenshtypo.Tests.csproj", "{CA6805AC-C5C4-4EBF-8768-0B11166124A9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Levenshtypo.Benchmarks", "Levenshtypo.Benchmarks\Levenshtypo.Benchmarks.csproj", "{D330C38E-9A3F-497A-910E-9499B2787240}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Levenshtypo.Benchmarks", "src\Levenshtypo.Benchmarks\Levenshtypo.Benchmarks.csproj", "{D330C38E-9A3F-497A-910E-9499B2787240}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{2C12F4F0-18BD-44FC-A45B-544D8124778B}"
 	ProjectSection(SolutionItems) = preProject

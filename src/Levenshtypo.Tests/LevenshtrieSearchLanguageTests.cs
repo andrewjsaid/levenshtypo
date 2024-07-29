@@ -13,17 +13,7 @@ public class LevenshtrieSearchLanguageTests
     {
         var factory = new LevenshtomatonFactory();
 
-        var words = new List<string>();
-
-        using (var resource = Assembly.GetExecutingAssembly().GetManifestResourceStream("Levenshtypo.Tests.Data.words.zip")!)
-        using (var zipReader = new ZipArchive(resource))
-        using (var reader = new StreamReader(zipReader.GetEntry("words.txt")!.Open()))
-        {
-            while (reader.ReadLine() is { } line)
-            {
-                words.Add(line);
-            }
-        }
+        var words = DataHelpers.EnglishWords();
 
         var levenshtrie = Levenshtrie<string>.Create(words.Select(word => new KeyValuePair<string, string>(word, word)));
 
