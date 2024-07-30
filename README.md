@@ -9,4 +9,3 @@ This project is a WIP.
 - Utf8 bytes as key
 - Surrogate pairs
 - Custom Trie traversal
-- Target NET Standard
