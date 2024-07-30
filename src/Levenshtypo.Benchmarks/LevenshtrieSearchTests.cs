@@ -3,28 +3,30 @@ using Levenshtypo;
 
 public class LevenshtrieSearchTests
 {
+    private const string SearchWord = "initiate";
+
     private static readonly IReadOnlyList<string> _englishWords = DataHelpers.EnglishWords();
     private static readonly IReadOnlyList<string> _1000Entries = Enumerable.Range(0, 1000).Select(i => i.ToString()).ToList();
 
     private readonly Dictionary<string, string> _dictionary = new Dictionary<string, string>(_englishWords.Select(w => new KeyValuePair<string, string>(w, w)));
     private readonly Levenshtrie<string> _levenshtrie = Levenshtrie<string>.Create(_englishWords.Select(w => new KeyValuePair<string, string>(w, w)));
 
-    private readonly Levenshtomaton _automaton0 = new LevenshtomatonFactory().Construct(DataHelpers.Initiate, 0);
-    private readonly Levenshtomaton _automaton1 = new LevenshtomatonFactory().Construct(DataHelpers.Initiate, 1);
-    private readonly Levenshtomaton _automaton2 = new LevenshtomatonFactory().Construct(DataHelpers.Initiate, 2);
-    private readonly Levenshtomaton _automaton3 = new LevenshtomatonFactory().Construct(DataHelpers.Initiate, 3);
+    private readonly Levenshtomaton _automaton0 = new LevenshtomatonFactory().Construct(SearchWord, 0);
+    private readonly Levenshtomaton _automaton1 = new LevenshtomatonFactory().Construct(SearchWord, 1);
+    private readonly Levenshtomaton _automaton2 = new LevenshtomatonFactory().Construct(SearchWord, 2);
+    private readonly Levenshtomaton _automaton3 = new LevenshtomatonFactory().Construct(SearchWord, 3);
 
     [Benchmark]
-    public object Dictionary_Search0() => _dictionary[DataHelpers.Initiate];
+    public object Distance0_Dictionary() => _dictionary[SearchWord];
 
     [Benchmark]
-    public object Naive_Search0()
+    public object Distance0_Naive()
     {
         var results = new List<string>();
         for (int i = 0; i < _englishWords.Count; i++)
         {
             var word = _englishWords[i];
-            if (string.Equals(DataHelpers.Initiate, word))
+            if (string.Equals(SearchWord, word))
             {
                 results.Add(word);
             }
@@ -33,16 +35,16 @@ public class LevenshtrieSearchTests
     }
 
     [Benchmark]
-    public object Search0() => _levenshtrie.Search(_automaton0);
+    public object Distance0_Levenshtypo() => _levenshtrie.Search(_automaton0);
 
     [Benchmark]
-    public object Naive_Search1()
+    public object Distance1_Naive()
     {
         var results = new List<string>();
         for (int i = 0; i < _englishWords.Count; i++)
         {
             var word = _englishWords[i];
-            if (LevenshteinDistance.Calculate(DataHelpers.Initiate, word) <= 1)
+            if (LevenshteinDistance.Calculate(SearchWord, word) <= 1)
             {
                 results.Add(word);
             }
@@ -51,16 +53,16 @@ public class LevenshtrieSearchTests
     }
 
     [Benchmark]
-    public object Search1() => _levenshtrie.Search(_automaton1);
+    public object Distance1_Levenshtypo() => _levenshtrie.Search(_automaton1);
 
     [Benchmark]
-    public object Naive_Search2()
+    public object Naive_Search_1()
     {
         var results = new List<string>();
         for (int i = 0; i < _englishWords.Count; i++)
         {
             var word = _englishWords[i];
-            if (LevenshteinDistance.Calculate(DataHelpers.Initiate, word) <= 2)
+            if (LevenshteinDistance.Calculate(SearchWord, word) <= 2)
             {
                 results.Add(word);
             }
@@ -69,7 +71,7 @@ public class LevenshtrieSearchTests
     }
 
     [Benchmark]
-    public object Search2() => _levenshtrie.Search(_automaton2);
+    public object Distance2_Levenshtypo() => _levenshtrie.Search(_automaton2);
 
     [Benchmark]
     public object Naive_Search3()
@@ -78,7 +80,7 @@ public class LevenshtrieSearchTests
         for (int i = 0; i < _englishWords.Count; i++)
         {
             var word = _englishWords[i];
-            if (LevenshteinDistance.Calculate(DataHelpers.Initiate, word) <= 3)
+            if (LevenshteinDistance.Calculate(SearchWord, word) <= 3)
             {
                 results.Add(word);
             }
@@ -87,5 +89,5 @@ public class LevenshtrieSearchTests
     }
 
     [Benchmark]
-    public object Search3() => _levenshtrie.Search(_automaton3);
+    public object Distance3_Levenshtypo() => _levenshtrie.Search(_automaton3);
 }

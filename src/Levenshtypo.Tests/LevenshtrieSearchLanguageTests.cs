@@ -27,19 +27,19 @@ public class LevenshtrieSearchLanguageTests
             var search = FindWordsWithinNDistance(word, 3);
 
             levenshtrie
-                .Search(factory.Construct(word, 0))
+                .Search(word, 0)
                 .ShouldBe(search.Where(x => x.distance <= 0).Select(x => x.word), ignoreOrder: true);
 
             levenshtrie.
-                Search(factory.Construct(word, 1))
+                Search(word, 1)
                 .ShouldBe(search.Where(x => x.distance <= 1).Select(x => x.word), ignoreOrder: true);
 
             levenshtrie
-                .Search(factory.Construct(word, 2))
+                .Search(word, 2)
                 .ShouldBe(search.Where(x => x.distance <= 2).Select(x => x.word), ignoreOrder: true);
 
             levenshtrie
-                .Search(factory.Construct(word, 3))
+                .Search(word, 3)
                 .ShouldBe(search.Where(x => x.distance <= 3).Select(x => x.word), ignoreOrder: true);
 
         }

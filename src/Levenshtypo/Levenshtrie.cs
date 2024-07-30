@@ -83,6 +83,7 @@ namespace Levenshtypo
             var rootEntry = AppendChildren('\0', source.ToArray(), nextDiscriminatorIndex: 0);
             entries[0] = rootEntry;
 
+
             return new Levenshtrie<T, TCaseSensitivity>(entries.ToArray(), results.ToArray(), tailData.ToArray());
 
             Entry AppendChildren(char nodeValue, IReadOnlyList<KeyValuePair<string, T>> group, int nextDiscriminatorIndex)
@@ -141,14 +142,13 @@ namespace Levenshtypo
 
                 int childEntriesStartIndex = entries.Count;
 
-                var orderedChildNodes = childNodes.OrderBy(x => (int)x.Key).ToList();
                 foreach (var entry in childNodes)
                 {
                     entries.Add(new Entry());
                 }
 
                 int writeIndex = childEntriesStartIndex;
-                foreach (var entry in childNodes)
+                foreach (var entry in childNodes.ToArray())
                 {
                     entries[writeIndex++] = AppendChildren((char)entry.Key, entry.Value, nextDiscriminatorIndex + 1);
                 }

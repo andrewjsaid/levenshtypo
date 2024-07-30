@@ -9,15 +9,15 @@ public class LevenshtrieConstructionTests
 
     // Compare against inbuilt dictionary
     [Benchmark]
-    public object Dictionary_CreateEnglishWords() => new Dictionary<string,string>(_englishWords.Select(w => new KeyValuePair<string, string>(w, w)));
+    public object English_Dictionary() => new Dictionary<string,string>(_englishWords.Select(w => new KeyValuePair<string, string>(w, w)));
 
     // Compare against inbuilt dictionary
     [Benchmark]
-    public object Dictionary_Create1000Entries() => new Dictionary<string, string>(_1000Entries.Select(w => new KeyValuePair<string, string>(w, w)));
+    public object Numbers_Dictionary() => new Dictionary<string, string>(_1000Entries.Select(w => new KeyValuePair<string, string>(w, w)));
 
     [Benchmark]
-    public object CreateEnglishWords() => Levenshtrie<string>.Create(_englishWords.Select(w => new KeyValuePair<string, string>(w, w)));
+    public object English_Levenshtypo() => Levenshtrie<string>.Create(_englishWords.Select(w => new KeyValuePair<string, string>(w, w)));
 
     [Benchmark]
-    public object Create1000Entries() => Levenshtrie<string>.Create(_1000Entries.Select(w => new KeyValuePair<string, string>(w, w)));
+    public object Numbers_Levenshtypo() => Levenshtrie<string>.Create(_1000Entries.Select(w => new KeyValuePair<string, string>(w, w)));
 }

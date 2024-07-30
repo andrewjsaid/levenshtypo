@@ -3,15 +3,17 @@ using Levenshtypo;
 
 public class LevenshtomatonFactoryTests
 {
-    [Benchmark]
-    public object Create0() => new LevenshtomatonFactory().Construct(DataHelpers.Initiate, 0);
+    private const string SearchWord = "initiate";
 
     [Benchmark]
-    public object Create1() => new LevenshtomatonFactory().Construct(DataHelpers.Initiate, 1);
+    public object Distance0_Create() => new LevenshtomatonFactory().Construct(SearchWord, 0);
 
     [Benchmark]
-    public object Create2() => new LevenshtomatonFactory().Construct(DataHelpers.Initiate, 2);
+    public object Distance1_Create() => new LevenshtomatonFactory().Construct(SearchWord, 1);
 
     [Benchmark]
-    public object Create3() => new LevenshtomatonFactory().Construct(DataHelpers.Initiate, 3);
+    public object Distance2_Create() => new LevenshtomatonFactory().Construct(SearchWord, 2);
+
+    [Benchmark]
+    public object Distance3_Create() => new LevenshtomatonFactory().Construct(SearchWord, 3);
 }
