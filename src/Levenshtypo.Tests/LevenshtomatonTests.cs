@@ -27,6 +27,30 @@ public class LevenshtomatonTests
         }
     }
 
+    [Theory]
+    [InlineData("abcd")]
+    [InlineData("bbbbbbbb")]
+    [InlineData("food")]
+    [InlineData("goodmood")]
+    [InlineData("ahab")]
+    [InlineData("abcdefgh")]
+    public void CaseSensitivity(string word)
+    {
+        var factory = new LevenshtomatonFactory();
+
+        for (int i = 0; i < 2; i++)
+        {
+            var caseSensitiveAutomaton = factory.Construct(word, i, ignoreCase: false);
+            var caseInsensitiveAutomaton = factory.Construct(word, i, ignoreCase: true);
+
+            caseSensitiveAutomaton.Matches(word).ShouldBeTrue();
+            caseInsensitiveAutomaton.Matches(word).ShouldBeTrue();
+
+            caseSensitiveAutomaton.Matches(word.ToUpper()).ShouldBeFalse();
+            caseInsensitiveAutomaton.Matches(word.ToUpper()).ShouldBeTrue();
+        }
+    }
+
     private IEnumerable<(string newWord, int changes)> WithAtMostNChanges(string query, int maxIterations)
     {
         if (query.Contains("~"))
@@ -49,7 +73,7 @@ public class LevenshtomatonTests
             {
                 if (seen.Add(changedWord))
                 {
-                    var distance = LevenshteinDistance.CalculateCaseSensitive(query, changedWord);
+                    var distance = LevenshteinDistance.Calculate(query, changedWord);
                     yield return (changedWord, distance);
                     maxIterations--;
                     queue.Enqueue(changedWord);

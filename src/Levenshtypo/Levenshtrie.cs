@@ -6,8 +6,59 @@ using System.Linq;
 
 namespace Levenshtypo
 {
+    /// <summary>
+    /// A data structure capable of associating strings with values and fuzzy lookups on those strings.
+    /// Supports a single value per unique input string.
+    /// Does not support modification after creation.
+    /// </summary>
+    public abstract class Levenshtrie<T> : ILevenshtomatonExecutor<IReadOnlyList<T>>
+    {
 
-    public sealed class Levenshtrie<T>
+        private protected Levenshtrie() { }
+
+        /// <summary>
+        /// Builds a tree from the given associations between strings and values.
+        /// </summary>
+        public static Levenshtrie<T> Create(IEnumerable<KeyValuePair<string, T>> source, bool ignoreCase = false)
+        {
+            if (ignoreCase)
+            {
+                return Levenshtrie<T, CaseInsensitive>.Create(source);
+            }
+            else
+            {
+                return Levenshtrie<T, CaseSensitive>.Create(source);
+            }
+        }
+
+        /// <summary>
+        /// Finds the value associated with the specified key.
+        /// </summary>
+        public abstract bool TryGetValue(string key, [MaybeNullWhen(false)] out T value);
+
+        /// <summary>
+        /// Searches for values with a key at the maximum error distance.
+        /// </summary>
+        public abstract IReadOnlyList<T> Search(string text, int maxErrorDistance);
+
+        /// <summary>
+        /// Searches for values with a key which is accepted by the specified automaton.
+        /// </summary>
+        public abstract IReadOnlyList<T> Search(Levenshtomaton automaton);
+
+        /// <summary>
+        /// Searches for values with a key accepted by the specified search state.
+        /// </summary>
+        public abstract IReadOnlyList<T> Search<TSearchState>(TSearchState searcher)
+            where TSearchState : struct, ILevenshtomatonExecutionState<TSearchState>;
+
+        IReadOnlyList<T> ILevenshtomatonExecutor<IReadOnlyList<T>>.ExecuteAutomaton<TSearchState>(TSearchState state)
+            where TSearchState : struct
+            => Search(state);
+    }
+
+    internal sealed class Levenshtrie<T, TCaseSensitivity> :
+        Levenshtrie<T>, ILevenshtomatonExecutor<IReadOnlyList<T>> where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
     {
         private readonly Entry[] _entries;
         private readonly T[] _results;
@@ -20,17 +71,19 @@ namespace Levenshtypo
             _tailData = tailData;
         }
 
-        public static Levenshtrie<T> Create(IEnumerable<KeyValuePair<string, T>> input)
+        private bool IgnoreCase => typeof(TCaseSensitivity) == typeof(CaseInsensitive);
+
+        internal static Levenshtrie<T> Create(IEnumerable<KeyValuePair<string, T>> source)
         {
             var entries = new List<Entry>();
             var results = new List<T>();
             var tailData = new List<char>();
 
             entries.Add(new Entry());
-            var rootEntry = AppendChildren('\0', input.ToArray(), nextDiscriminatorIndex: 0);
+            var rootEntry = AppendChildren('\0', source.ToArray(), nextDiscriminatorIndex: 0);
             entries[0] = rootEntry;
 
-            return new Levenshtrie<T>(entries.ToArray(), results.ToArray(), tailData.ToArray());
+            return new Levenshtrie<T, TCaseSensitivity>(entries.ToArray(), results.ToArray(), tailData.ToArray());
 
             Entry AppendChildren(char nodeValue, IReadOnlyList<KeyValuePair<string, T>> group, int nextDiscriminatorIndex)
             {
@@ -67,12 +120,17 @@ namespace Levenshtypo
                 {
                     if (item.Key.Length == nextDiscriminatorIndex)
                     {
+                        if (resultIndex != -1)
+                        {
+                            throw new ArgumentException(nameof(source), "May not use this data structure with duplicate keys.");
+                        }
+
                         resultIndex = results.Count;
                         results.Add(item.Value);
                     }
                     else
                     {
-                        var nextKey = item.Key[nextDiscriminatorIndex];
+                        var nextKey = default(TCaseSensitivity).Normalize(item.Key[nextDiscriminatorIndex]);
                         if (!childNodes.TryGetValue(nextKey, out var targetList))
                         {
                             childNodes.Add(nextKey, targetList = new List<KeyValuePair<string, T>>());
@@ -106,7 +164,7 @@ namespace Levenshtypo
             }
         }
 
-        public bool TryGetValue(string key, [MaybeNullWhen(false)] out T value)
+        public override bool TryGetValue(string key, [MaybeNullWhen(false)] out T value)
         {
             var entries = _entries;
 
@@ -121,7 +179,7 @@ namespace Levenshtypo
                 var childEntries = entries.AsSpan(entry.ChildEntriesStartIndex, entry.NumChildren);
                 for (int i = 0; i < childEntries.Length; i++)
                 {
-                    if (childEntries[i].EntryValue == nextChar)
+                    if (default(TCaseSensitivity).Equals(childEntries[i].EntryValue, nextChar))
                     {
                         found = true;
                         entry = childEntries[i];
@@ -129,10 +187,22 @@ namespace Levenshtypo
                         var entryTailDataLength = entry.TailDataLength;
                         if (entryTailDataLength > 0)
                         {
-                            if (keyIndex + entryTailDataLength > key.Length
-                                || !_tailData.AsSpan(entry.TailDataIndex, entryTailDataLength).SequenceEqual(key.AsSpan(keyIndex, entryTailDataLength)))
+                            if (keyIndex + entryTailDataLength > key.Length)
                             {
                                 found = false;
+                            }
+                            else
+                            {
+                                for (int dataOffset = 0; dataOffset < entryTailDataLength; dataOffset++)
+                                {
+                                    var c1 = _tailData[entry.TailDataIndex + dataOffset];
+                                    var c2 = key[keyIndex + dataOffset];
+                                    if (!default(TCaseSensitivity).Equals(c1, c2))
+                                    {
+                                        found = false;
+                                        break;
+                                    }
+                                }
                             }
 
                             keyIndex += entry.TailDataLength;
@@ -160,20 +230,36 @@ namespace Levenshtypo
             return false;
         }
 
-        public IReadOnlyList<T> Search(Levenshtomaton automaton)
+        public override IReadOnlyList<T> Search(string text, int maxErrorDistance)
+        {
+            var automaton = LevenshtomatonFactory.Instance.Construct(text, maxErrorDistance, ignoreCase: IgnoreCase);
+            return Search(automaton);
+        }
+
+        public override IReadOnlyList<T> Search(Levenshtomaton automaton)
+        {
+            if(automaton.IgnoreCase != IgnoreCase)
+            {
+                throw new ArgumentException("Case sensitivity of automaton does not match.");
+            }
+
+            return automaton.Execute(this);
+        }
+
+        public override IReadOnlyList<T> Search<TSearchState>(TSearchState searcher)
         {
             var results = new HashSet<T>();
-            TraverseChildrenOf(0, automaton.Start());
+            TraverseChildrenOf(0, searcher);
             return results.ToArray();
 
-            void TraverseChildrenOf(int entryIndex, Levenshtomaton.State enumerator)
+            void TraverseChildrenOf(int entryIndex, TSearchState searchState)
             {
                 var entry = _entries[entryIndex];
                 var childEntries = _entries.AsSpan(entry.ChildEntriesStartIndex, entry.NumChildren);
                 for (int i = 0; i < childEntries.Length; i++)
                 {
                     var childEntry = childEntries[i];
-                    if (enumerator.MoveNext(childEntry.EntryValue, out var nextEnumerator))
+                    if (searchState.MoveNext(childEntry.EntryValue, out var nextEnumerator))
                     {
                         bool matchesTailData = true;
                         var entryTailDataLength = childEntry.TailDataLength;
@@ -203,6 +289,9 @@ namespace Levenshtypo
                 }
             }
         }
+
+        IReadOnlyList<T> ILevenshtomatonExecutor<IReadOnlyList<T>>.ExecuteAutomaton<TSearchState>(TSearchState state)
+            => Search(state);
 
         [DebuggerDisplay("{EntryValue}")]
         private struct Entry

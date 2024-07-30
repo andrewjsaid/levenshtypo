@@ -3,7 +3,6 @@ using Levenshtypo;
 
 public class LevenshtomatonFactoryTests
 {
-
     [Benchmark]
     public object Create0() => new LevenshtomatonFactory().Construct(DataHelpers.Initiate, 0);
 

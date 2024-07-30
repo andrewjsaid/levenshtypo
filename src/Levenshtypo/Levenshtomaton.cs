@@ -1,134 +1,42 @@
 ﻿using System;
-using System.Diagnostics;
 
 namespace Levenshtypo
 {
-
-    public sealed class Levenshtomaton
+    /// <summary>
+    /// Represents an automaton (State Machine) which can determine whether a given string
+    /// is within <see cref="MaxEditDistance"/> edits (insertions, deletions, substitutions)
+    /// of the string <see cref="Text"/>
+    /// </summary>
+    public abstract class Levenshtomaton
     {
-        private readonly DfaState[] _states;
-        private readonly DfaTransition[] _transitions;
-        private readonly string _s;
-        private readonly int _maxEditDistance;
-        private readonly int _startStateIndex;
-
-        internal Levenshtomaton(
-            DfaState[] states,
-            DfaTransition[] transitions,
-            string s,
-            int maxEditDistance,
-            int startStateIndex)
+        private protected Levenshtomaton(string text, int maxEditDistance)
         {
-            _states = states;
-            _transitions = transitions;
-            _s = s;
-            _maxEditDistance = maxEditDistance;
-            _startStateIndex = startStateIndex;
+            Text = text;
+            MaxEditDistance = maxEditDistance;
         }
 
-        public bool Matches(ReadOnlySpan<char> text)
-        {
-            var state = Start();
+        /// <summary>
+        /// The automaton is specialized to match words against this string.
+        /// </summary>
+        public string Text { get; }
 
-            var i = 0;
-            while (i < text.Length)
-            {
-                if (!state.MoveNext(text[i++], out state))
-                {
-                    return false;
-                }
-            }
+        /// <summary>
+        /// The maximum edit distance (inclusive) for a positive match.
+        /// </summary>
+        public int MaxEditDistance { get; }
 
-            return state.IsFinal;
-        }
+        internal abstract bool IgnoreCase { get; }
 
-        public State Start() => new State(this, _startStateIndex, 0);
+        /// <summary>
+        /// Tests if a string matches <see cref="Text"/> within
+        /// <see cref="MaxEditDistance"/> edits (insertions, deletions, substitutions).
+        /// </summary>
+        public abstract bool Matches(ReadOnlySpan<char> text);
 
-        internal static int CalculateMaxCharacterizedVectorLength(int maxEditDistance) => (2 * maxEditDistance) + 1;
-
-        public readonly struct State
-        {
-            private readonly Levenshtomaton _automaton;
-            private readonly int _stateIndex;
-            private readonly int _sIndex;
-
-            internal State(Levenshtomaton automaton, int stateIndex, int sIndex)
-            {
-                _automaton = automaton;
-                _stateIndex = stateIndex;
-                _sIndex = sIndex;
-            }
-
-            public bool MoveNext(char c, out State next)
-            {
-                var automaton = _automaton;
-                Debug.Assert(_automaton != null);
-
-                var s = automaton._s;
-                var sIndex = _sIndex;
-                var states = _automaton._states;
-                var maxEditDistance = automaton._maxEditDistance;
-
-                var maxCharacteristicVectorLength = CalculateMaxCharacterizedVectorLength(maxEditDistance);
-                var characteristicVectorLength = Math.Min(maxCharacteristicVectorLength, s.Length - sIndex);
-
-                var characteristicVector = 0u;
-                foreach (var sChar in s.AsSpan().Slice(sIndex, characteristicVectorLength))
-                {
-                    characteristicVector = (characteristicVector << 1) | (sChar == c ? 1u : 0u);
-                }
-
-                var state = states[_stateIndex];
-                var transition = automaton._transitions[state.TransitionStartIndex + characteristicVector];
-                var nextCharacteristicVectorLength = Math.Min(maxCharacteristicVectorLength, s.Length - sIndex - transition.IndexOffset);
-
-                if (transition.MatchingStateStartIndex != DfaTransition.NoMatchingState)
-                {
-                    int nextStateIndex = transition.MatchingStateStartIndex;
-                    int groupId = states[transition.MatchingStateStartIndex].GroupId;
-
-                    while (
-                        states[nextStateIndex].CharacteristicVectorLength != nextCharacteristicVectorLength
-                        && states[nextStateIndex].GroupId == groupId)
-                    {
-                        nextStateIndex++;
-                    }
-
-                    next = new State(automaton, nextStateIndex, _sIndex + transition.IndexOffset);
-                    return true;
-                }
-
-                next = default;
-                return false;
-            }
-
-            public bool IsFinal => _automaton._states[_stateIndex].IsFinal;
-        }
-    }
-
-
-    [DebuggerDisplay("{Name}")]
-    internal struct DfaState
-    {
-#if DEBUG
-    public string Name;
-#endif
-        public int GroupId; // Used to avoid infinite loop
-        public int CharacteristicVectorLength;
-        public bool IsFinal;
-        public int TransitionStartIndex;
-    }
-
-    [DebuggerDisplay("MatchingChar: {CharacterizedVector}, Index: {MatchingStateStartIndex}")]
-    internal struct DfaTransition
-    {
-        public const int NoMatchingState = -1;
-
-#if DEBUG
-    public uint CharacterizedVector;
-#endif
-        public int MatchingStateStartIndex;
-        public int IndexOffset;
+        /// <summary>
+        /// Execute the automaton against any data structure.
+        /// </summary>
+        public abstract T Execute<T>(ILevenshtomatonExecutor<T> executor);
     }
 
 }

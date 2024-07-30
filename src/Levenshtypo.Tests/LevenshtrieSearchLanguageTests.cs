@@ -1,6 +1,4 @@
-﻿using System.IO.Compression;
-using System.Reflection;
-using Levenshtypo;
+﻿using Levenshtypo;
 using Shouldly;
 
 namespace Tests;
@@ -52,7 +50,7 @@ public class LevenshtrieSearchLanguageTests
 
             foreach (var word in words)
             {
-                var distance = LevenshteinDistance.CalculateCaseSensitive(word, query);
+                var distance = LevenshteinDistance.Calculate(word, query);
                 if (distance <= maxEditDistance)
                 {
                     results.Add((word, distance));

@@ -1,0 +1,22 @@
+﻿abstract Levenshtypo.Levenshtomaton.Execute<T>(Levenshtypo.ILevenshtomatonExecutor<T> executor) -> T
+abstract Levenshtypo.Levenshtomaton.Matches(System.ReadOnlySpan<char> text) -> bool
+abstract Levenshtypo.Levenshtrie<T>.Search(Levenshtypo.Levenshtomaton automaton) -> System.Collections.Generic.IReadOnlyList<T>
+abstract Levenshtypo.Levenshtrie<T>.Search(string text, int maxErrorDistance) -> System.Collections.Generic.IReadOnlyList<T>
+abstract Levenshtypo.Levenshtrie<T>.Search<TSearchState>(TSearchState searcher) -> System.Collections.Generic.IReadOnlyList<T>
+abstract Levenshtypo.Levenshtrie<T>.TryGetValue(string key, out T value) -> bool
+const Levenshtypo.LevenshtomatonFactory.MaxEditDistance = 7 -> int
+Levenshtypo.ILevenshtomatonExecutionState<TSelf>
+Levenshtypo.ILevenshtomatonExecutionState<TSelf>.IsFinal.get -> bool
+Levenshtypo.ILevenshtomatonExecutionState<TSelf>.MoveNext(char c, out TSelf next) -> bool
+Levenshtypo.ILevenshtomatonExecutor<T>
+Levenshtypo.ILevenshtomatonExecutor<T>.ExecuteAutomaton<TState>(TState executionState) -> T
+Levenshtypo.LevenshteinDistance
+Levenshtypo.Levenshtomaton
+Levenshtypo.Levenshtomaton.MaxEditDistance.get -> int
+Levenshtypo.Levenshtomaton.Text.get -> string
+Levenshtypo.LevenshtomatonFactory
+Levenshtypo.LevenshtomatonFactory.Construct(string s, int maxEditDistance, bool ignoreCase = false) -> Levenshtypo.Levenshtomaton
+Levenshtypo.Levenshtrie<T>
+static Levenshtypo.LevenshteinDistance.Calculate(System.ReadOnlySpan<char> a, System.ReadOnlySpan<char> b, bool ignoreCase = false) -> int
+static Levenshtypo.LevenshtomatonFactory.Instance.get -> Levenshtypo.LevenshtomatonFactory
+static Levenshtypo.Levenshtrie<T>.Create(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string, T>> source, bool ignoreCase = false) -> Levenshtypo.Levenshtrie<T>

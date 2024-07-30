@@ -87,4 +87,40 @@ public class LevenshtrieTryGetValueTests
         var foundNonEmptyString = t.TryGetValue("something", out var _);
         foundNonEmptyString.ShouldBeFalse();
     }
+
+    [Fact]
+    public void TryGetValue_CaseSensitivity()
+    {
+        var entries = Enumerable.Range(1, 100).Select(e => new KeyValuePair<string, int>(Guid.NewGuid().ToString().ToLowerInvariant(), e)).ToArray();
+        var tCaseSensitive = Levenshtrie<int>.Create(entries, ignoreCase: false);
+        var tCaseInsensitive = Levenshtrie<int>.Create(entries, ignoreCase: true);
+
+        foreach (var entry in entries)
+        {
+            tCaseSensitive.TryGetValue(entry.Key, out var _).ShouldBeTrue();
+            tCaseInsensitive.TryGetValue(entry.Key, out var _).ShouldBeTrue();
+
+            tCaseSensitive.TryGetValue(entry.Key.ToUpperInvariant(), out var _).ShouldBeFalse();
+            tCaseInsensitive.TryGetValue(entry.Key.ToUpperInvariant(), out var _).ShouldBeTrue();
+
+        }
+    }
+
+    [Fact]
+    public void Search_CaseSensitivity()
+    {
+        var entries = Enumerable.Range(1, 100).Select(e => new KeyValuePair<string, int>(Guid.NewGuid().ToString().ToLowerInvariant(), e)).ToArray();
+        var tCaseSensitive = Levenshtrie<int>.Create(entries, ignoreCase: false);
+        var tCaseInsensitive = Levenshtrie<int>.Create(entries, ignoreCase: true);
+
+        foreach (var entry in entries)
+        {
+            tCaseSensitive.Search(entry.Key, 0).ShouldHaveSingleItem();
+            tCaseInsensitive.Search(entry.Key, 0).ShouldHaveSingleItem();
+
+            tCaseSensitive.Search(entry.Key.ToUpperInvariant(), 0).ShouldBeEmpty();
+            tCaseInsensitive.Search(entry.Key.ToUpperInvariant(), 0).ShouldHaveSingleItem();
+
+        }
+    }
 }
