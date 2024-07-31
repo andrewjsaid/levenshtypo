@@ -3,6 +3,27 @@
   <PropertyGroup>
     <TargetFrameworks>net8.0;netstandard2.1</TargetFrameworks>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageId>Levenshtypo</PackageId>
+    <Title>Levenshtypo</Title>
+  </PropertyGroup>
+  
+  <PropertyGroup>
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <Authors>Andrew J Said</Authors>
+    <Description>Levenshtypo - a .NET fuzzy matching string dictionary
+
+Levenshtypo is a library which allows you to search large data sets by fuzzy matching the key strings.
+
+The dataset is loaded upfront as a sequence of key-value pairs. Once loaded it allows searching for the values which are up to a certain Levenshtein Distance away from a query string.
+
+Levenshtein Distance is the number of character insertions, deletions or substitutions required to transform one string into another.</Description>
+    <Copyright>MIT</Copyright>
+    <PackageProjectUrl>https://github.com/andrewjsaid/levenshtypo</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/andrewjsaid/levenshtypo</RepositoryUrl>
+    <PackageTags>levenshtein;string matching;fuzzy string matching;trie;fuzzy trie;levenshtein distance;levenshtein automata</PackageTags>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(TargetFramework)' == 'net8.0' ">
@@ -24,6 +45,17 @@
   <ItemGroup>
     <AdditionalFiles Include="PublicAPI/$(TargetFramework)/PublicAPI.Shipped.txt" />
     <AdditionalFiles Include="PublicAPI/$(TargetFramework)/PublicAPI.Unshipped.txt" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <None Include="..\..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
   
 </Project>
