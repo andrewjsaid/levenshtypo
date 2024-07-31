@@ -1,8 +1,8 @@
 ﻿abstract Levenshtypo.Levenshtomaton.Execute<T>(Levenshtypo.ILevenshtomatonExecutor<T> executor) -> T
 abstract Levenshtypo.Levenshtomaton.Matches(System.ReadOnlySpan<char> text) -> bool
-abstract Levenshtypo.Levenshtrie<T>.Search(Levenshtypo.Levenshtomaton automaton) -> System.Collections.Generic.IReadOnlyList<T>
-abstract Levenshtypo.Levenshtrie<T>.Search(string text, int maxErrorDistance) -> System.Collections.Generic.IReadOnlyList<T>
-abstract Levenshtypo.Levenshtrie<T>.Search<TSearchState>(TSearchState searcher) -> System.Collections.Generic.IReadOnlyList<T>
+abstract Levenshtypo.Levenshtrie<T>.Search(Levenshtypo.Levenshtomaton automaton) -> T[]
+abstract Levenshtypo.Levenshtrie<T>.Search(string text, int maxErrorDistance) -> T[]
+abstract Levenshtypo.Levenshtrie<T>.Search<TSearchState>(TSearchState searcher) -> T[]
 abstract Levenshtypo.Levenshtrie<T>.TryGetValue(string key, out T value) -> bool
 const Levenshtypo.LevenshtomatonFactory.MaxEditDistance = 7 -> int
 Levenshtypo.ILevenshtomatonExecutionState<TSelf>

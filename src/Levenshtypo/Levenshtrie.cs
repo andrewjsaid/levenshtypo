@@ -11,7 +11,7 @@ namespace Levenshtypo
     /// Supports a single value per unique input string.
     /// Does not support modification after creation.
     /// </summary>
-    public abstract class Levenshtrie<T> : ILevenshtomatonExecutor<IReadOnlyList<T>>
+    public abstract class Levenshtrie<T> : ILevenshtomatonExecutor<T[]>
     {
 
         private protected Levenshtrie() { }
@@ -39,26 +39,26 @@ namespace Levenshtypo
         /// <summary>
         /// Searches for values with a key at the maximum error distance.
         /// </summary>
-        public abstract IReadOnlyList<T> Search(string text, int maxErrorDistance);
+        public abstract T[] Search(string text, int maxErrorDistance);
 
         /// <summary>
         /// Searches for values with a key which is accepted by the specified automaton.
         /// </summary>
-        public abstract IReadOnlyList<T> Search(Levenshtomaton automaton);
+        public abstract T[] Search(Levenshtomaton automaton);
 
         /// <summary>
         /// Searches for values with a key accepted by the specified search state.
         /// </summary>
-        public abstract IReadOnlyList<T> Search<TSearchState>(TSearchState searcher)
+        public abstract T[] Search<TSearchState>(TSearchState searcher)
             where TSearchState : struct, ILevenshtomatonExecutionState<TSearchState>;
 
-        IReadOnlyList<T> ILevenshtomatonExecutor<IReadOnlyList<T>>.ExecuteAutomaton<TSearchState>(TSearchState state)
+        T[] ILevenshtomatonExecutor<T[]>.ExecuteAutomaton<TSearchState>(TSearchState state)
             where TSearchState : struct
             => Search(state);
     }
 
     internal sealed class Levenshtrie<T, TCaseSensitivity> :
-        Levenshtrie<T>, ILevenshtomatonExecutor<IReadOnlyList<T>> where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
+        Levenshtrie<T>, ILevenshtomatonExecutor<T[]> where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
     {
         private readonly Entry[] _entries;
         private readonly T[] _results;
@@ -230,13 +230,13 @@ namespace Levenshtypo
             return false;
         }
 
-        public override IReadOnlyList<T> Search(string text, int maxErrorDistance)
+        public override T[] Search(string text, int maxErrorDistance)
         {
             var automaton = LevenshtomatonFactory.Instance.Construct(text, maxErrorDistance, ignoreCase: IgnoreCase);
             return Search(automaton);
         }
 
-        public override IReadOnlyList<T> Search(Levenshtomaton automaton)
+        public override T[] Search(Levenshtomaton automaton)
         {
             if(automaton.IgnoreCase != IgnoreCase)
             {
@@ -246,7 +246,7 @@ namespace Levenshtypo
             return automaton.Execute(this);
         }
 
-        public override IReadOnlyList<T> Search<TSearchState>(TSearchState searcher)
+        public override T[] Search<TSearchState>(TSearchState searcher)
         {
             var results = new HashSet<T>();
             TraverseChildrenOf(0, searcher);
@@ -290,7 +290,7 @@ namespace Levenshtypo
             }
         }
 
-        IReadOnlyList<T> ILevenshtomatonExecutor<IReadOnlyList<T>>.ExecuteAutomaton<TSearchState>(TSearchState state)
+        T[] ILevenshtomatonExecutor<T[]>.ExecuteAutomaton<TSearchState>(TSearchState state)
             => Search(state);
 
         [DebuggerDisplay("{EntryValue}")]
