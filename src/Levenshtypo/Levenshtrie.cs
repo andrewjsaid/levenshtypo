@@ -39,7 +39,7 @@ namespace Levenshtypo
         /// <summary>
         /// Searches for values with a key at the maximum error distance.
         /// </summary>
-        public abstract T[] Search(string text, int maxErrorDistance);
+        public abstract T[] Search(string text, int maxEditDistance, LevenshtypoMetric metric = LevenshtypoMetric.Levenshtein);
 
         /// <summary>
         /// Searches for values with a key which is accepted by the specified automaton.
@@ -230,9 +230,9 @@ namespace Levenshtypo
             return false;
         }
 
-        public override T[] Search(string text, int maxErrorDistance)
+        public override T[] Search(string text, int maxEditDistance, LevenshtypoMetric metric = LevenshtypoMetric.Levenshtein)
         {
-            var automaton = LevenshtomatonFactory.Instance.Construct(text, maxErrorDistance, ignoreCase: IgnoreCase);
+            var automaton = LevenshtomatonFactory.Instance.Construct(text, maxEditDistance, ignoreCase: IgnoreCase, metric: metric);
             return Search(automaton);
         }
 

@@ -16,7 +16,7 @@ namespace Levenshtypo
         /// </summary>
         public const int MaxEditDistance = 7;
 
-        private readonly ConcurrentDictionary<int, ParameterizedLevenshtomaton.Template> _templates = new ConcurrentDictionary<int, ParameterizedLevenshtomaton.Template>();
+        private readonly ConcurrentDictionary<(int distance, LevenshtypoMetric metric), ParameterizedLevenshtomaton.Template> _templates = new ConcurrentDictionary<(int distance, LevenshtypoMetric metric), ParameterizedLevenshtomaton.Template>();
 
         internal LevenshtomatonFactory() { }
 
@@ -28,7 +28,7 @@ namespace Levenshtypo
         /// </summary>
         /// <param name="s">The string against which others will be compared.</param>
         /// <param name="maxEditDistance">The inclusive maximum edit distance for allowed strings.</param>
-        public Levenshtomaton Construct(string s, int maxEditDistance, bool ignoreCase = false)
+        public Levenshtomaton Construct(string s, int maxEditDistance, bool ignoreCase = false, LevenshtypoMetric metric = LevenshtypoMetric.Levenshtein)
         {
             if (maxEditDistance > MaxEditDistance)
             {
@@ -47,15 +47,16 @@ namespace Levenshtypo
             {
                 if (ignoreCase)
                 {
-                    return new Distance0Levenshtomaton<CaseInsensitive>(s);
+                    return new Distance0Levenshtomaton<CaseInsensitive>(s, metric);
                 }
                 else
                 {
-                    return new Distance0Levenshtomaton<CaseSensitive>(s);
+                    return new Distance0Levenshtomaton<CaseSensitive>(s, metric);
                 }
             }
 
-            return _templates.GetOrAdd(maxEditDistance, ParameterizedLevenshtomaton.CreateTemplate).Instantiate(s, ignoreCase);
+            var template = _templates.GetOrAdd((maxEditDistance, metric), key => ParameterizedLevenshtomaton.CreateTemplate(key.distance, key.metric));
+            return template.Instantiate(s, ignoreCase);
         }
     }
 }

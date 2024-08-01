@@ -50,7 +50,7 @@ public class LevenshtrieSearchLanguageTests
 
             foreach (var word in words)
             {
-                var distance = LevenshteinDistance.Calculate(word, query);
+                var distance = LevenshteinDistance.Levenshtein(word, query);
                 if (distance <= maxEditDistance)
                 {
                     results.Add((word, distance));

@@ -6,6 +6,7 @@
     /// </summary>
     /// <remarks>
     /// The generics here is to balance power and performance.
+    /// It allows for double dispatch to avoid boxing.
     /// In using this format of generics (struct), the users of this interface
     /// will force the JIT to compile a specialized method for each type of struct.
     /// </remarks>
@@ -25,6 +26,49 @@
         /// text.
         /// </summary>
         bool IsFinal { get; }
+    }
+
+    /// <summary>
+    /// Represents execution of an automaton.
+    /// </summary>
+    /// <remarks>
+    /// This version of the automaton execution state relies on boxing and
+    /// should be avoided in performance critical scenarios.
+    /// </remarks>
+    public abstract class LevenshtomatonExecutionState
+    {
+        /// <summary>
+        /// Consume a character in the input string, advancing the automaton to the next state.
+        /// </summary>
+        /// <param name="c">The character being consumed.</param>
+        /// <param name="next">The next state of the automaton, after the character has been consumed.</param>
+        /// <returns>Whether a next state was found.</returns>
+        public abstract bool MoveNext(char c, out LevenshtomatonExecutionState next);
+
+        /// <summary>
+        /// When true, the characters leading up to this state form text
+        /// which is within the Edit Distance of the original text.
+        /// </summary>
+        public abstract bool IsFinal { get; }
+    }
+
+    internal sealed class LevenshtomatonExecutionState<TState> : LevenshtomatonExecutionState where TState : struct, ILevenshtomatonExecutionState<TState>
+    {
+        private readonly TState _state;
+
+        public LevenshtomatonExecutionState(TState state)
+        {
+            _state = state;
+        }
+
+        public override bool MoveNext(char c, out LevenshtomatonExecutionState next)
+        {
+            var result = _state.MoveNext(c, out var nextState);
+            next = new LevenshtomatonExecutionState<TState>(nextState);
+            return result;
+        }
+
+        public override bool IsFinal => _state.IsFinal;
     }
 
 }

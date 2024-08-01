@@ -7,14 +7,17 @@ namespace Levenshtypo
     {
         private string _s;
 
-        public Distance0Levenshtomaton(string s) : base(s, 0)
+        public Distance0Levenshtomaton(string s, LevenshtypoMetric metric) : base(s, 0)
         {
             _s = s;
+            Metric = metric;
         }
 
-        internal override bool IgnoreCase => typeof(TCaseSensitivity) == typeof(CaseInsensitive);
+        public override bool IgnoreCase => typeof(TCaseSensitivity) == typeof(CaseInsensitive);
 
-        public override T Execute<T>(ILevenshtomatonExecutor<T> executor) => executor.ExecuteAutomaton(Start());
+        public override LevenshtypoMetric Metric { get; }
+
+        public override T Execute<T>(ILevenshtomatonExecutor<T> executor) => executor.ExecuteAutomaton(StartSpecialized());
 
         public override bool Matches(ReadOnlySpan<char> text)
         {
@@ -28,7 +31,10 @@ namespace Levenshtypo
             }
         }
 
-        private State Start() => new State(_s, 0);
+        private State StartSpecialized() => new State(_s, 0);
+
+        public override LevenshtomatonExecutionState Start() => new LevenshtomatonExecutionState<State>(StartSpecialized());
+
         private readonly struct State : ILevenshtomatonExecutionState<State>
         {
             private readonly string _s;

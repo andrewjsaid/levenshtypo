@@ -18,10 +18,10 @@ public class LevenshteinDistanceTests
 
     [InlineData("axx", "abc", 2)]
     [InlineData("abx", "abc", 1)]
-    public void CaseSensitiveTests(string a, string b, int distance)
+    public void Levenshtein_CaseSensitiveTests(string a, string b, int distance)
     {
-        LevenshteinDistance.Calculate(a, b).ShouldBe(distance);
-        LevenshteinDistance.Calculate(b, a).ShouldBe(distance);
+        LevenshteinDistance.Levenshtein(a, b).ShouldBe(distance);
+        LevenshteinDistance.Levenshtein(b, a).ShouldBe(distance);
     }
 
     [Theory]
@@ -36,9 +36,9 @@ public class LevenshteinDistanceTests
 
     [InlineData("axx", "ABC", 2)]
     [InlineData("abx", "ABC", 1)]
-    public void CaseInsensitiveTests(string a, string b, int distance)
+    public void Levenshtein_CaseInsensitiveTests(string a, string b, int distance)
     {
-        LevenshteinDistance.Calculate(a, b, ignoreCase: true).ShouldBe(distance);
-        LevenshteinDistance.Calculate(b, a, ignoreCase: true).ShouldBe(distance);
+        LevenshteinDistance.Levenshtein(a, b, ignoreCase: true).ShouldBe(distance);
+        LevenshteinDistance.Levenshtein(b, a, ignoreCase: true).ShouldBe(distance);
     }
 }

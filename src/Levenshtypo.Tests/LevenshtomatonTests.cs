@@ -4,12 +4,14 @@ namespace Levenshtypo.Tests;
 
 public class LevenshtomatonTests
 {
-    private Levenshtomaton[] Construct(string word, bool ignoreCase) => [
-            ParameterizedLevenshtomaton.CreateTemplate(0).Instantiate(word, ignoreCase),
-            ParameterizedLevenshtomaton.CreateTemplate(1).Instantiate(word, ignoreCase),
-            ParameterizedLevenshtomaton.CreateTemplate(2).Instantiate(word, ignoreCase),
-            ParameterizedLevenshtomaton.CreateTemplate(3).Instantiate(word, ignoreCase),
-            ignoreCase ? new Distance0Levenshtomaton<CaseInsensitive>(word) : new Distance0Levenshtomaton<CaseSensitive>(word)
+    private Levenshtomaton[] Construct(string word, bool ignoreCase, LevenshtypoMetric metric) => [
+            ParameterizedLevenshtomaton.CreateTemplate(maxEditDistance: 0, metric).Instantiate(word, ignoreCase),
+            ParameterizedLevenshtomaton.CreateTemplate(maxEditDistance: 1, metric).Instantiate(word, ignoreCase),
+            ParameterizedLevenshtomaton.CreateTemplate(maxEditDistance: 2, metric).Instantiate(word, ignoreCase),
+            ParameterizedLevenshtomaton.CreateTemplate(maxEditDistance: 3, metric).Instantiate(word, ignoreCase),
+            ignoreCase
+                ? new Distance0Levenshtomaton<CaseInsensitive>(word, metric) 
+                : new Distance0Levenshtomaton<CaseSensitive>(word, metric)
         ];
 
     [Theory]
@@ -20,9 +22,9 @@ public class LevenshtomatonTests
     [InlineData("goodmood")]
     [InlineData("ahab")]
     [InlineData("abcdefgh")]
-    public void Tests(string word)
+    public void Levenshtein_Tests(string word)
     {
-        var automata = Construct(word, ignoreCase: false);
+        var automata = Construct(word, ignoreCase: false, metric: LevenshtypoMetric.Levenshtein);
 
         foreach (var (testWord, distance) in WithAtMostNChanges(word, maxIterations: 100_000))
         {
@@ -40,10 +42,10 @@ public class LevenshtomatonTests
     [InlineData("goodmood")]
     [InlineData("ahab")]
     [InlineData("abcdefgh")]
-    public void CaseSensitivity(string word)
+    public void Levenshtein_CaseSensitivity(string word)
     {
-        var caseSensitiveAutomata = Construct(word, ignoreCase: false);
-        var caseInsensitiveAutomata = Construct(word, ignoreCase: true);
+        var caseSensitiveAutomata = Construct(word, ignoreCase: false, metric: LevenshtypoMetric.Levenshtein);
+        var caseInsensitiveAutomata = Construct(word, ignoreCase: true, metric: LevenshtypoMetric.Levenshtein);
 
         foreach (var automaton in caseSensitiveAutomata.Union(caseInsensitiveAutomata))
         {
@@ -55,9 +57,26 @@ public class LevenshtomatonTests
     private bool Matches(Levenshtomaton automaton, string word)
     {
         var matchesDirect = automaton.Matches(word);
+
         var matchesExecution = automaton.Execute(new TestExecutor(word));
         (matchesDirect == matchesExecution).ShouldBeTrue();
+
+        var matchesBoxing = ExecuteDirect(automaton.Start(), word);
+        (matchesDirect == matchesBoxing).ShouldBeTrue();
+
         return matchesDirect;
+    }
+
+    private static bool ExecuteDirect(LevenshtomatonExecutionState state, string word)
+    {
+        for (int i = 0; i < word.Length; i++)
+        {
+            if (!state.MoveNext(word[i], out state))
+            {
+                return false;
+            }
+        }
+        return state.IsFinal;
     }
 
     private class TestExecutor(string word) : ILevenshtomatonExecutor<bool>
@@ -97,7 +116,7 @@ public class LevenshtomatonTests
             {
                 if (seen.Add(changedWord))
                 {
-                    var distance = LevenshteinDistance.Calculate(query, changedWord);
+                    var distance = LevenshteinDistance.Levenshtein(query, changedWord);
                     if (distance < 10)
                     {
                         yield return (changedWord, distance);

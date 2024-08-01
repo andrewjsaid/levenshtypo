@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Levenshtypo
+﻿namespace Levenshtypo
 {
     internal interface ICaseSensitivity<TSelf> where TSelf : struct, ICaseSensitivity<TSelf>
     {

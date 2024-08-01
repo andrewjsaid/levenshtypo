@@ -8,9 +8,9 @@ namespace Levenshtypo.Generator;
 
 internal static class CSharpStateMachineGenerator
 {
-    public static string WriteCSharpStateMachine(int distance)
+    public static string WriteCSharpStateMachine(int distance, LevenshtypoMetric metric)
     {
-        var template = ParameterizedLevenshtomaton.CreateTemplate(distance);
+        var template = ParameterizedLevenshtomaton.CreateTemplate(distance, metric);
         ref var states = ref GetStates(template);
         ref var transitions = ref GetTransitions(template);
         return WriteCSharpStateMachine(distance, states, transitions);
@@ -51,7 +51,7 @@ internal static class CSharpStateMachineGenerator
                 records.Add(new TransitionRecord(
                 Distance: state.CharacteristicVectorLength,
                 FromState: MapGroup(state.GroupId),
-                Vector: characteristicVector,
+                Vector: (uint)characteristicVector,
                 ToState: stateTransition.MatchingStateStartIndex == -1 ? -1 : MapGroup(states[stateTransition.MatchingStateStartIndex].GroupId),
                 ReadOffset: stateTransition.IndexOffset));
             }

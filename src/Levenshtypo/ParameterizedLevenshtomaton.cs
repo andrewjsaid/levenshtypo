@@ -15,7 +15,7 @@ namespace Levenshtypo
 
         protected static int CalculateMaxCharacterizedVectorLength(int maxEditDistance) => (2 * maxEditDistance) + 1;
 
-        internal static Template CreateTemplate(int maxEditDistance)
+        internal static Template CreateTemplate(int maxEditDistance, LevenshtypoMetric metric)
         {
             var (nfaStates, nfaTransitions) = BuildNfa(maxEditDistance);
 #if DEBUG
@@ -27,7 +27,7 @@ namespace Levenshtypo
             ToDot(dfaStates, dfaTransitions, maxEditDistance);
 #endif
 
-            return new Template(dfaStates, dfaTransitions, maxEditDistance);
+            return new Template(dfaStates, dfaTransitions, maxEditDistance, metric);
         }
 
         private static (NfaState[] nfaStates, NfaTransition[] nfaTransitions) BuildNfa(int maxEditDistance)
@@ -417,15 +417,18 @@ namespace Levenshtypo
             private readonly DfaState[] _states;
             private readonly DfaTransition[] _transitions;
             private readonly int _maxEditDistance;
+            private readonly LevenshtypoMetric _metric;
 
             public Template(
                 DfaState[] states,
                 DfaTransition[] transitions,
-                int maxEditDistance)
+                int maxEditDistance,
+                LevenshtypoMetric metric)
             {
                 _states = states;
                 _transitions = transitions;
                 _maxEditDistance = maxEditDistance;
+                _metric = metric;
             }
 
             public ParameterizedLevenshtomaton Instantiate(string s, bool ignoreCase)
@@ -437,7 +440,8 @@ namespace Levenshtypo
                         _transitions,
                         s,
                         _maxEditDistance,
-                        CalculateStartStateIndex(s.Length));
+                        CalculateStartStateIndex(s.Length),
+                        _metric);
                 }
                 else
                 {
@@ -446,7 +450,8 @@ namespace Levenshtypo
                         _transitions,
                         s,
                         _maxEditDistance,
-                        CalculateStartStateIndex(s.Length));
+                        CalculateStartStateIndex(s.Length),
+                        _metric);
                 }
             }
 
@@ -528,23 +533,28 @@ namespace Levenshtypo
             DfaTransition[] transitions,
             string s,
             int maxEditDistance,
-            int startStateIndex) : base(s, maxEditDistance)
+            int startStateIndex,
+            LevenshtypoMetric metric) : base(s, maxEditDistance)
         {
             _states = states;
             _transitions = transitions;
             _s = s;
             _maxEditDistance = maxEditDistance;
             _startStateIndex = startStateIndex;
+            Metric = metric;
         }
 
-        public override bool Matches(ReadOnlySpan<char> text) => DefaultMatchesImplementation(text, Start());
+        public override bool Matches(ReadOnlySpan<char> text) => DefaultMatchesImplementation(text, StartSpecialized());
 
-        public override T Execute<T>(ILevenshtomatonExecutor<T> executor)
-            => executor.ExecuteAutomaton(Start());
+        public override T Execute<T>(ILevenshtomatonExecutor<T> executor) => executor.ExecuteAutomaton(StartSpecialized());
 
-        private State Start() => new State(this, _startStateIndex, 0);
+        private State StartSpecialized() => new State(this, _startStateIndex, 0);
 
-        internal override bool IgnoreCase => typeof(TCaseSensitivity) == typeof(CaseInsensitive);
+        public override LevenshtomatonExecutionState Start() => new LevenshtomatonExecutionState<State>(StartSpecialized());
+
+        public override bool IgnoreCase => typeof(TCaseSensitivity) == typeof(CaseInsensitive);
+
+        public override LevenshtypoMetric Metric { get; }
 
         private readonly struct State : ILevenshtomatonExecutionState<State>
         {

@@ -12,22 +12,22 @@ namespace Levenshtypo
         /// <summary>
         /// Calculates the levenshtein distance between two strings.
         /// </summary>
-        public static int Calculate(ReadOnlySpan<char> a, ReadOnlySpan<char> b, bool ignoreCase = false)
+        public static int Levenshtein(ReadOnlySpan<char> a, ReadOnlySpan<char> b, bool ignoreCase = false)
         {
             if (ignoreCase)
             {
-                return Calculate<CaseInsensitive>(a, b);
+                return Levenshtein<CaseInsensitive>(a, b);
             }
             else
             {
-                return Calculate<CaseSensitive>(a, b);
+                return Levenshtein<CaseSensitive>(a, b);
             }
         }
 
         /// <summary>
         /// Calculates the levenshtein distance between two strings using a case insensitive comparison.
         /// </summary>
-        private static int Calculate<TCaseSensitivity>(ReadOnlySpan<char> a, ReadOnlySpan<char> b) where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
+        private static int Levenshtein<TCaseSensitivity>(ReadOnlySpan<char> a, ReadOnlySpan<char> b) where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
         {
             var distancesLength = b.Length + 1;
 

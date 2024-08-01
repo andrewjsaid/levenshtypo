@@ -44,7 +44,7 @@ public class LevenshtrieSearchTests
         for (int i = 0; i < _englishWords.Count; i++)
         {
             var word = _englishWords[i];
-            if (LevenshteinDistance.Calculate(SearchWord, word) <= 1)
+            if (LevenshteinDistance.Levenshtein(SearchWord, word) <= 1)
             {
                 results.Add(word);
             }
@@ -62,7 +62,7 @@ public class LevenshtrieSearchTests
         for (int i = 0; i < _englishWords.Count; i++)
         {
             var word = _englishWords[i];
-            if (LevenshteinDistance.Calculate(SearchWord, word) <= 2)
+            if (LevenshteinDistance.Levenshtein(SearchWord, word) <= 2)
             {
                 results.Add(word);
             }
@@ -80,7 +80,7 @@ public class LevenshtrieSearchTests
         for (int i = 0; i < _englishWords.Count; i++)
         {
             var word = _englishWords[i];
-            if (LevenshteinDistance.Calculate(SearchWord, word) <= 3)
+            if (LevenshteinDistance.Levenshtein(SearchWord, word) <= 3)
             {
                 results.Add(word);
             }

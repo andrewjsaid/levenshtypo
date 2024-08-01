@@ -13,6 +13,7 @@ required to transform one string into another.
 
 ## Planned Work (Coming Soon)
 
+- Restricted Edit Distance
 - State Serialization logic
 - Preserialized state machines offered on GitHub
 
@@ -31,8 +32,102 @@ IEnumerable<KeyValuePair<string, object>> dataset = ...;
 Levenshtrie<object> levenshtrie = Levenshtrie<object>.Create(dataset);
 
 // Search the dataset for keys with edit distance 2 from "hello"
-IReadOnlyList<object> results = levenshtrie.Search("hello", 2);
+object[] results = levenshtrie.Search("hello", 2);
 ```
+
+
+## Samples
+
+These samples and more can be found in the _samples_ directory.
+
+<details>
+<summary>Suggest similar words</summary>
+
+```csharp
+public class TypoSuggestion
+{
+    private readonly Levenshtrie<string> _trie;
+
+    public TypoSuggestion(IEnumerable<string> words)
+    {
+        _trie = Levenshtrie<string>.Create(
+            words.Select(w => new KeyValuePair<string, string>(w, w)),
+            ignoreCase: true);
+    }
+
+    public string[] GetSimilarWords(string word)
+    {
+        return _trie.Search(word, maxEditDistance: 2);
+    }
+}
+```
+
+</details>
+
+<details>
+<summary>Find whether a string matches blacklist</summary>
+
+```csharp
+public class BlacklistDetection
+{
+    private readonly Levenshtrie<string> _trie;
+
+    public BlacklistDetection(IEnumerable<string> blacklist)
+    {
+        _trie = Levenshtrie<string>.Create(
+            blacklist.Select(w => new KeyValuePair<string, string>(w, w)),
+            ignoreCase: true);
+    }
+
+    public bool IsBlacklisted(string word)
+    {
+        return _trie.Search(word, maxEditDistance: 1).Contains(word);
+    }
+}
+```
+
+</details>
+
+</details>
+
+<details>
+<summary>Quickly check whether a list of strings matches an input</summary>
+
+```csharp
+// Benchmarks below show that a naive implementation,
+// even if it is well written, is 10x slower than using
+// an automaton.
+// Benchmark run against English language dataset.
+//
+// | Method          | Mean       | Error     | StdDev    | Allocated |
+// |-----------------|-----------:|----------:|----------:|----------:|
+// | Using_naive     | 103.190 ms | 1.4706 ms | 1.3756 ms |     214 B |
+// | Using_automaton |   8.161 ms | 0.0469 ms | 0.0439 ms |      12 B |
+
+public static string[] Search(string searchWord, string[] against)
+{
+    var automaton = LevenshtomatonFactory.Instance.Construct(searchWord, maxEditDistance: 2);
+
+    var results = new List<string>();
+
+    foreach (var word in against)
+    {
+        // Naive version would be:
+        // bool matches = LevenshteinDistance.Levenshtein(searchWord, word) <= 2;
+
+        // Automaton version is:
+        bool matches = automaton.Matches(word);
+        if (matches)
+        {
+            results.Add(word);
+        }
+    }
+
+    return results.ToArray();
+}
+```
+
+</details>
 
 ## Limitations
 
@@ -45,7 +140,8 @@ IReadOnlyList<object> results = levenshtrie.Search("hello", 2);
 
 The English Language dataset used in the benchmarks contains approximately 465,000 words.
 
-### Search all English Language with a fuzzy key
+<details>
+<summary>Search all English Language with a fuzzy key</summary>
 
 - **Naive**: Compute Levenshtein Distance against all words.
 - **Levenshtypo**: This library.
@@ -73,8 +169,10 @@ AMD Ryzen 9 5950X, 1 CPU, 32 logical and 16 physical cores
 | Distance2_Naive       | 98,188,072.000 ns |   638,972.9260 ns |   597,695.6714 ns |      - |     822 B |
 | Distance3_Naive       | 99,317,118.889 ns | 1,241,670.8616 ns | 1,161,459.6944 ns |      - |    4443 B |
 
+</details>
 
-### Load all English Language dataset
+<details>
+<summary>Load all English Language dataset</summary>
 
 - **Levenshtypo**: This library.
 - **Dictionary**: .NET Dictionary for comparison.
@@ -93,6 +191,8 @@ AMD Ryzen 9 5950X, 1 CPU, 32 logical and 16 physical cores
 |-------------------- |--------------:|-------------:|-------------:|-----------:|----------:|----------:|-------------:|
 | English_Dictionary  |  32,450.80 μs |   647.413 μs |   770.700 μs |   781.2500 |  781.2500 |  781.2500 |  35524.19 KB |
 | English_Levenshtypo | 282,953.40 μs | 4,376.502 μs | 4,093.783 μs | 27000.0000 | 6000.0000 | 2000.0000 | 527682.66 KB |
+
+</details>
 
 ## References
 
