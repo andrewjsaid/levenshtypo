@@ -1,23 +1,21 @@
-﻿namespace Levenshtypo
+﻿namespace Levenshtypo;
+internal interface ICaseSensitivity<TSelf> where TSelf : struct, ICaseSensitivity<TSelf>
 {
-    internal interface ICaseSensitivity<TSelf> where TSelf : struct, ICaseSensitivity<TSelf>
-    {
-        bool Equals(char a, char b);
+    bool Equals(char a, char b);
 
-        char Normalize(char a);
-    }
+    char Normalize(char a);
+}
 
-    internal struct CaseSensitive : ICaseSensitivity<CaseSensitive>
-    {
-        public bool Equals(char a, char b) => a == b;
+internal struct CaseSensitive : ICaseSensitivity<CaseSensitive>
+{
+    public bool Equals(char a, char b) => a == b;
 
-        public char Normalize(char a) => a;
-    }
+    public char Normalize(char a) => a;
+}
 
-    internal struct CaseInsensitive : ICaseSensitivity<CaseInsensitive>
-    {
-        public bool Equals(char a, char b) => char.ToLower(a) == char.ToLower(b);
+internal struct CaseInsensitive : ICaseSensitivity<CaseInsensitive>
+{
+    public bool Equals(char a, char b) => char.ToLower(a) == char.ToLower(b);
 
-        public char Normalize(char a) => char.ToLower(a);
-    }
+    public char Normalize(char a) => char.ToLower(a);
 }
