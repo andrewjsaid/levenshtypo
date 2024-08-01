@@ -13,11 +13,12 @@ required to transform one string into another.
 
 ## Planned Work (Coming Soon)
 
-- Handcrafted automatons up to edit distance 2
 - State Serialization logic
 - Preserialized state machines offered on GitHub
 
 ## Installation
+
+Install via [Nuget](https://www.nuget.org/packages/Levenshtypo).
 
 
 ## Getting Started

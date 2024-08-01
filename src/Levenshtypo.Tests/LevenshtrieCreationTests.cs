@@ -1,6 +1,6 @@
 using Levenshtypo;
 
-namespace Tests;
+namespace Levenshtypo.Tests;
 
 public class LevenshtrieCreationTests
 {

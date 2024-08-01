@@ -1,11 +1,19 @@
-using Levenshtypo;
 using Shouldly;
 
-namespace Tests;
+namespace Levenshtypo.Tests;
 
 public class LevenshtomatonTests
 {
+    private Levenshtomaton[] Construct(string word, bool ignoreCase) => [
+            ParameterizedLevenshtomaton.CreateTemplate(0).Instantiate(word, ignoreCase),
+            ParameterizedLevenshtomaton.CreateTemplate(1).Instantiate(word, ignoreCase),
+            ParameterizedLevenshtomaton.CreateTemplate(2).Instantiate(word, ignoreCase),
+            ParameterizedLevenshtomaton.CreateTemplate(3).Instantiate(word, ignoreCase),
+            ignoreCase ? new Distance0Levenshtomaton<CaseInsensitive>(word) : new Distance0Levenshtomaton<CaseSensitive>(word)
+        ];
+
     [Theory]
+    [InlineData("")]
     [InlineData("abcd")]
     [InlineData("bbbbbbbb")]
     [InlineData("food")]
@@ -14,16 +22,14 @@ public class LevenshtomatonTests
     [InlineData("abcdefgh")]
     public void Tests(string word)
     {
-        var factory = new LevenshtomatonFactory();
-        var automaton0 = factory.Construct(word, 0);
-        var automaton1 = factory.Construct(word, 1);
-        var automaton2 = factory.Construct(word, 2);
+        var automata = Construct(word, ignoreCase: false);
 
         foreach (var (testWord, distance) in WithAtMostNChanges(word, maxIterations: 100_000))
         {
-            automaton0.Matches(testWord).ShouldBe(distance <= 0);
-            automaton1.Matches(testWord).ShouldBe(distance <= 1);
-            automaton2.Matches(testWord).ShouldBe(distance <= 2);
+            foreach (var automaton in automata)
+            {
+                Matches(automaton, testWord).ShouldBe(distance <= automaton.MaxEditDistance);
+            }
         }
     }
 
@@ -36,18 +42,36 @@ public class LevenshtomatonTests
     [InlineData("abcdefgh")]
     public void CaseSensitivity(string word)
     {
-        var factory = new LevenshtomatonFactory();
+        var caseSensitiveAutomata = Construct(word, ignoreCase: false);
+        var caseInsensitiveAutomata = Construct(word, ignoreCase: true);
 
-        for (int i = 0; i < 2; i++)
+        foreach (var automaton in caseSensitiveAutomata.Union(caseInsensitiveAutomata))
         {
-            var caseSensitiveAutomaton = factory.Construct(word, i, ignoreCase: false);
-            var caseInsensitiveAutomaton = factory.Construct(word, i, ignoreCase: true);
+            Matches(automaton, word).ShouldBeTrue();
+            Matches(automaton, word.ToUpperInvariant()).ShouldBe(automaton.IgnoreCase);
+        }
+    }
 
-            caseSensitiveAutomaton.Matches(word).ShouldBeTrue();
-            caseInsensitiveAutomaton.Matches(word).ShouldBeTrue();
+    private bool Matches(Levenshtomaton automaton, string word)
+    {
+        var matchesDirect = automaton.Matches(word);
+        var matchesExecution = automaton.Execute(new TestExecutor(word));
+        (matchesDirect == matchesExecution).ShouldBeTrue();
+        return matchesDirect;
+    }
 
-            caseSensitiveAutomaton.Matches(word.ToUpper()).ShouldBeFalse();
-            caseInsensitiveAutomaton.Matches(word.ToUpper()).ShouldBeTrue();
+    private class TestExecutor(string word) : ILevenshtomatonExecutor<bool>
+    {
+        public bool ExecuteAutomaton<TState>(TState executionState) where TState : struct, ILevenshtomatonExecutionState<TState>
+        {
+            for (int i = 0; i < word.Length; i++)
+            {
+                if (!executionState.MoveNext(word[i], out executionState))
+                {
+                    return false;
+                }
+            }
+            return executionState.IsFinal;
         }
     }
 
@@ -74,9 +98,12 @@ public class LevenshtomatonTests
                 if (seen.Add(changedWord))
                 {
                     var distance = LevenshteinDistance.Calculate(query, changedWord);
-                    yield return (changedWord, distance);
-                    maxIterations--;
-                    queue.Enqueue(changedWord);
+                    if (distance < 10)
+                    {
+                        yield return (changedWord, distance);
+                        maxIterations--;
+                        queue.Enqueue(changedWord);
+                    }
                 }
             }
         }
@@ -152,4 +179,5 @@ public class LevenshtomatonTests
             }
         }
     }
+
 }

@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 
 namespace Levenshtypo
@@ -43,6 +41,18 @@ namespace Levenshtypo
             {
                 // The limitation is because I haven't had the time to implement otherwise.
                 throw new ArgumentException(nameof(s), "Unable to construct a levenshtomaton for this input.");
+            }
+
+            if (maxEditDistance == 0)
+            {
+                if (ignoreCase)
+                {
+                    return new Distance0Levenshtomaton<CaseInsensitive>(s);
+                }
+                else
+                {
+                    return new Distance0Levenshtomaton<CaseSensitive>(s);
+                }
             }
 
             return _templates.GetOrAdd(maxEditDistance, ParameterizedLevenshtomaton.CreateTemplate).Instantiate(s, ignoreCase);

@@ -414,7 +414,6 @@ namespace Levenshtypo
 
         internal sealed class Template
         {
-
             private readonly DfaState[] _states;
             private readonly DfaTransition[] _transitions;
             private readonly int _maxEditDistance;
@@ -455,13 +454,20 @@ namespace Levenshtypo
             {
                 var characteristicVectorLength = CalculateMaxCharacterizedVectorLength(_maxEditDistance);
                 var truncatedCharacteristicVectorLength = Math.Min(characteristicVectorLength, sLength);
-                for (int i = 0; i < characteristicVectorLength; i++)
+
+                var groupId = _states[0].GroupId;
+                int i = 0;
+
+                while (_states[i].CharacteristicVectorLength != truncatedCharacteristicVectorLength && _states[i + 1].GroupId == groupId)
                 {
-                    if (_states[i].CharacteristicVectorLength == truncatedCharacteristicVectorLength)
-                    {
-                        return i;
-                    }
+                    i++;
                 }
+
+                if (_states[i].CharacteristicVectorLength == truncatedCharacteristicVectorLength)
+                {
+                    return i;
+                }
+
                 throw new InvalidOperationException("Unable to find a starting state.");
             }
         }
@@ -531,21 +537,7 @@ namespace Levenshtypo
             _startStateIndex = startStateIndex;
         }
 
-        public override bool Matches(ReadOnlySpan<char> text)
-        {
-            var state = Start();
-
-            var i = 0;
-            while (i < text.Length)
-            {
-                if (!state.MoveNext(text[i++], out state))
-                {
-                    return false;
-                }
-            }
-
-            return state.IsFinal;
-        }
+        public override bool Matches(ReadOnlySpan<char> text) => DefaultMatchesImplementation(text, Start());
 
         public override T Execute<T>(ILevenshtomatonExecutor<T> executor)
             => executor.ExecuteAutomaton(Start());
@@ -554,7 +546,7 @@ namespace Levenshtypo
 
         internal override bool IgnoreCase => typeof(TCaseSensitivity) == typeof(CaseInsensitive);
 
-        internal readonly struct State : ILevenshtomatonExecutionState<State>
+        private readonly struct State : ILevenshtomatonExecutionState<State>
         {
             private readonly ParameterizedLevenshtomaton<TCaseSensitivity> _automaton;
             private readonly int _stateIndex;

@@ -37,6 +37,20 @@ namespace Levenshtypo
         /// Execute the automaton against any data structure.
         /// </summary>
         public abstract T Execute<T>(ILevenshtomatonExecutor<T> executor);
+
+        private protected bool DefaultMatchesImplementation<TState>(ReadOnlySpan<char> text, TState state) where TState : struct, ILevenshtomatonExecutionState<TState>
+        {
+            var i = 0;
+            while (i < text.Length)
+            {
+                if (!state.MoveNext(text[i++], out state))
+                {
+                    return false;
+                }
+            }
+
+            return state.IsFinal;
+        }
     }
 
 }

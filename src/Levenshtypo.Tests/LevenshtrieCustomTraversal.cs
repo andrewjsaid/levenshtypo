@@ -1,7 +1,7 @@
 using Levenshtypo;
 using Shouldly;
 
-namespace Tests;
+namespace Levenshtypo.Tests;
 
 public class LevenshtrieCustomTraversal
 {
@@ -12,7 +12,7 @@ public class LevenshtrieCustomTraversal
         // Specifically here we want to look for strings with length 2.
 
         var trie = Levenshtrie<int>.Create(Enumerable.Range(0, 1000).Select(i => new KeyValuePair<string, int>(i.ToString(), i)));
-        
+
         var found = trie.Search(new OnlyGetTwoChars(0));
 
         found.ShouldBe(Enumerable.Range(10, 90), ignoreOrder: true);

@@ -24,6 +24,7 @@ Levenshtein Distance is the number of character insertions, deletions or substit
     <RepositoryUrl>https://github.com/andrewjsaid/levenshtypo</RepositoryUrl>
     <PackageTags>levenshtein;string matching;fuzzy string matching;trie;fuzzy trie;levenshtein distance;levenshtein automata</PackageTags>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageIcon>logo.png</PackageIcon>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(TargetFramework)' == 'net8.0' ">
@@ -33,6 +34,7 @@ Levenshtein Distance is the number of character insertions, deletions or substit
   <ItemGroup>
     <InternalsVisibleTo Include="Levenshtypo.Benchmarks" />
     <InternalsVisibleTo Include="Levenshtypo.Tests" />
+    <InternalsVisibleTo Include="Levenshtypo.Generator" />
   </ItemGroup>
 
   <ItemGroup>
@@ -48,6 +50,10 @@ Levenshtein Distance is the number of character insertions, deletions or substit
   </ItemGroup>
   
   <ItemGroup>
+    <None Include="..\..\images\logo.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
     <None Include="..\..\LICENSE">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>

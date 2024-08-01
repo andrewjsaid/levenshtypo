@@ -1,7 +1,7 @@
 ﻿using Levenshtypo;
 using Shouldly;
 
-namespace Tests;
+namespace Levenshtypo.Tests;
 
 public class LevenshtrieTryGetValueTests
 {
