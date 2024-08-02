@@ -17,12 +17,14 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
 
     internal static Template CreateTemplate(int maxEditDistance, LevenshtypoMetric metric)
     {
-        var (nfaStates, nfaTransitions) = BuildNfa(maxEditDistance);
+        var allowTransposition = metric is LevenshtypoMetric.RestrictedEdit;
+
+        var (nfaStates, nfaTransitions) = BuildNfa(maxEditDistance, allowTransposition);
 #if DEBUG
         ToDot(nfaStates, nfaTransitions);
 #endif
 
-        var (dfaStates, dfaTransitions) = ConvertToDfa(nfaStates, nfaTransitions, maxEditDistance);
+        var (dfaStates, dfaTransitions) = ConvertToDfa(nfaStates, nfaTransitions, maxEditDistance, allowTransposition);
 #if DEBUG
         ToDot(dfaStates, dfaTransitions, maxEditDistance);
 #endif
@@ -30,30 +32,35 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
         return new Template(dfaStates, dfaTransitions, maxEditDistance, metric);
     }
 
-    private static (NfaState[] nfaStates, NfaTransition[] nfaTransitions) BuildNfa(int maxEditDistance)
+    private static (NfaState[] nfaStates, NfaTransition[] nfaTransitions) BuildNfa(int maxEditDistance, bool allowTransposition)
     {
         int sLength = CalculateMaxCharacterizedVectorLength(maxEditDistance);
-        var states = new NfaState[(sLength + 1) * (maxEditDistance + 1)];
+        var multiplier = allowTransposition ? 2 : 1;
+        var states = new NfaState[(sLength + 1) * (maxEditDistance + 1) * multiplier];
         var transitions = new List<NfaTransition>(states.Length * 3);
 
         for (int i = 0; i <= sLength; i++)
         {
             for (int e = 0; e <= maxEditDistance; e++)
             {
-                var stateIndex = CalculateStateIndex(maxEditDistance, i, e);
+                var stateIndex = CalculateStateIndex(maxEditDistance, i, e, allowTransposition);
 
                 var transitionStartIndex = transitions.Count;
+                var transitionSkipCount = 0;
 
                 ref var state = ref states[stateIndex];
                 state.Consumed = i;
                 state.Error = e;
+#if DEBUG
+                state.Name = $"c{i}_e{e}";
+#endif
 
                 if (i < sLength)
                 {
                     transitions.Add(new NfaTransition
                     {
                         MatchingCharacterOffset = i,
-                        MatchingStateIndex = CalculateStateIndex(maxEditDistance, i + 1, e)
+                        MatchingStateIndex = CalculateStateIndex(maxEditDistance, i + 1, e, allowTransposition)
                     });
 
                     if (e < maxEditDistance)
@@ -62,14 +69,14 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
                         transitions.Add(new NfaTransition
                         {
                             MatchingCharacterOffset = NfaTransition.MatchesAnyChar,
-                            MatchingStateIndex = CalculateStateIndex(maxEditDistance, i, e + 1)
+                            MatchingStateIndex = CalculateStateIndex(maxEditDistance, i, e + 1, allowTransposition)
                         });
 
                         // Substitute a character
                         transitions.Add(new NfaTransition
                         {
                             MatchingCharacterOffset = NfaTransition.MatchesAnyChar,
-                            MatchingStateIndex = CalculateStateIndex(maxEditDistance, i + 1, e + 1)
+                            MatchingStateIndex = CalculateStateIndex(maxEditDistance, i + 1, e + 1, allowTransposition)
                         });
                     }
 
@@ -81,9 +88,48 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
                             transitions.Add(new NfaTransition
                             {
                                 MatchingCharacterOffset = i + iDelete,
-                                MatchingStateIndex = CalculateStateIndex(maxEditDistance, i + 1 + iDelete, e + iDelete)
+                                MatchingStateIndex = CalculateStateIndex(maxEditDistance, i + 1 + iDelete, e + iDelete, allowTransposition)
                             });
                         }
+                    }
+
+                    if (allowTransposition && i < sLength - 1 && e < maxEditDistance)
+                    {
+                        // Attempt to transpose
+
+                        var transpositionStateIndex = CalculateStateIndex(maxEditDistance, i, e + 1, allowTransposition: true, isTranspositionState: true);
+
+                        // It's important that this transition is the last one for this state
+                        // otherwise transitionSkipCount won't do what it's meant to.
+
+                        // This is the transition to the intermediate state.
+                        transitions.Add(new NfaTransition
+                        {
+                            MatchingCharacterOffset = i + 1,
+                            MatchingStateIndex = transpositionStateIndex
+                        });
+
+                        var transpositionTransitionStartIndex = transitions.Count;
+                        transitionSkipCount++;
+
+                        // This is the transition from the intermediate state outwards.
+                        transitions.Add(new NfaTransition
+                        {
+                            MatchingCharacterOffset = i,
+                            MatchingStateIndex = CalculateStateIndex(maxEditDistance, i + 2, e + 1, allowTransposition: true)
+                        });
+
+                        states[transpositionStateIndex] = new NfaState
+                        {
+#if DEBUG
+                            Name = state.Name + "_T",
+#endif
+                            IsTranspositionState = true,
+                            Consumed = state.Consumed,
+                            Error = state.Error + 1,
+                            TransitionStartIndex = transpositionTransitionStartIndex,
+                            TransitionCount = 1
+                        };
                     }
                 }
                 else
@@ -94,13 +140,14 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
                         transitions.Add(new NfaTransition
                         {
                             MatchingCharacterOffset = NfaTransition.MatchesAnyChar,
-                            MatchingStateIndex = CalculateStateIndex(maxEditDistance, i, e + 1)
+                            MatchingStateIndex = CalculateStateIndex(maxEditDistance, i, e + 1, allowTransposition)
                         });
+
                     }
                 }
 
                 state.TransitionStartIndex = transitionStartIndex;
-                state.TransitionCount = transitions.Count - transitionStartIndex;
+                state.TransitionCount = transitions.Count - transitionStartIndex - transitionSkipCount;
             }
         }
 
@@ -110,7 +157,8 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
     private static (DfaState[] dfaStates, DfaTransition[] dfaTransitions) ConvertToDfa(
         NfaState[] nfaStates,
         NfaTransition[] nfaTransitions,
-        int maxEditDistance)
+        int maxEditDistance,
+        bool allowTransposition)
     {
         var maxCharacteristicVectorLength = CalculateMaxCharacterizedVectorLength(maxEditDistance);
 
@@ -121,14 +169,15 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
 
         var seen = new List<int[]>();
 
-        MapNfaStatesToDfaIdx(new int[] { 0 });
+        MapNfaStatesToDfaIdx([0]);
 
         return (states.ToArray(), transitions.ToArray());
 
         int MapNfaStatesToDfaIdx(int[] multiState)
         {
 #if DEBUG
-            var name = string.Join(" ", multiState.Select(ms => $"c{nfaStates[ms].Consumed}_e{nfaStates[ms].Error}"));
+            var name = string.Join(" ", multiState.Select(
+                ms => $"c{nfaStates[ms].Consumed}_e{nfaStates[ms].Error}{(nfaStates[ms].IsTranspositionState ? "_T" : string.Empty)}"));
 #endif
 
             // Check if it already exists
@@ -262,11 +311,8 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
                 var iNfa = nfaStates[multiStateBuilder[i]];
                 for (int j = 0; j < multiStateBuilder.Count; j++)
                 {
-                    if (i != j)
-                    {
-                        var jNfa = nfaStates[multiStateBuilder[j]];
-                        isUseless |= (iNfa.Error - jNfa.Error) >= Math.Abs(iNfa.Consumed - jNfa.Consumed);
-                    }
+                    var jNfa = nfaStates[multiStateBuilder[j]];
+                    isUseless |= IsUseless(iNfa, jNfa);
                 }
 
                 if (isUseless)
@@ -293,7 +339,8 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
                 while (i < replaceCount)
                 {
                     var nfaState = nfaStates[multiStateBuilder[i++]];
-                    multiStateBuilder.Add(CalculateStateIndex(maxEditDistance, nfaState.Consumed - minConsumed, nfaState.Error));
+                    var newStateIndex = CalculateStateIndex(maxEditDistance, nfaState.Consumed - minConsumed, nfaState.Error, allowTransposition, nfaState.IsTranspositionState);
+                    multiStateBuilder.Add(newStateIndex);
                 }
                 multiStateBuilder.RemoveRange(0, replaceCount);
             }
@@ -302,6 +349,37 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
             var result = multiStateBuilder.ToArray();
             multiStateBuilder.Clear();
             return (result, minConsumed);
+
+            bool IsUseless(NfaState a, NfaState b)
+            {
+                if(a.Error <= b.Error)
+                {
+                    return false;
+                }
+
+                if (a.IsTranspositionState)
+                {
+                    if (b.IsTranspositionState)
+                    {
+                        return a.Consumed == b.Consumed;
+                    }
+                    else
+                    {
+                        return (a.Error - b.Error) >= Math.Abs(a.Consumed - (b.Consumed - 1));
+                    }
+                }
+                else
+                {
+                    if (b.IsTranspositionState)
+                    {
+                        return maxEditDistance == a.Error && a.Consumed == b.Consumed;
+                    }
+                    else
+                    {
+                        return (a.Error - b.Error) >= Math.Abs(a.Consumed - b.Consumed);
+                    }
+                }
+            }
         }
 
         bool AnyFinal(int[] multiState, int distanceToEnd)
@@ -319,7 +397,19 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
         }
     }
 
-    private static int CalculateStateIndex(int maxEditDistance, int consumed, int error) => (consumed * (maxEditDistance + 1)) + error;
+    private static int CalculateStateIndex(int maxEditDistance, int consumed, int error, bool allowTransposition, bool isTranspositionState = false)
+    {
+        var stateIndex = (consumed * (maxEditDistance + 1)) + error;
+        if (allowTransposition)
+        {
+            stateIndex = 2 * stateIndex;
+            if (isTranspositionState)
+            {
+                stateIndex += 1;
+            }
+        }
+        return stateIndex;
+    }
 
 #if DEBUG
     private static void ToDot(NfaState[] nfaStates, NfaTransition[] nfaTransitions)
@@ -331,17 +421,19 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
         for (int i = 0; i < nfaStates.Length; i++)
         {
             NfaState state = nfaStates[i];
-            var name = $"c{state.Consumed}_e{state.Error}";
+            if(state.Name is null)
+            {
+                continue;
+            }
 
-            sb.AppendLine($" \"{name}\";");
+            sb.AppendLine($" \"{state.Name}\";");
 
             var transitions = nfaTransitions.AsSpan(state.TransitionStartIndex, state.TransitionCount);
             foreach (var transition in transitions)
             {
                 var nextState = nfaStates[transition.MatchingStateIndex];
-                var nextStateName = $"c{nextState.Consumed}_e{nextState.Error}";
                 var symbol = transition.MatchingCharacterOffset == NfaTransition.MatchesAnyChar ? "*" : transition.MatchingCharacterOffset.ToString();
-                sb.AppendLine($"  \"{name}\" -> \"{nextStateName}\" [label=\"CharIndex: {symbol}\"];");
+                sb.AppendLine($"  \"{state.Name}\" -> \"{nextState.Name}\" [label=\"CharIndex: {symbol}\"];");
             }
         }
 
@@ -480,10 +572,14 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
     [DebuggerDisplay("{Consumed}[{Error}]")]
     internal struct NfaState
     {
+#if DEBUG
+        public string Name;
+#endif
         public int Consumed;
         public int Error;
         public int TransitionStartIndex;
         public int TransitionCount;
+        public bool IsTranspositionState;
     }
 
     [DebuggerDisplay("MatchingChar: {MatchingChar}, Index: {MatchingStateIndex}")]

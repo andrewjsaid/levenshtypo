@@ -13,7 +13,7 @@ required to transform one string into another.
 
 ## Planned Work (Coming Soon)
 
-- Restricted Edit Distance
+- Automaton to return edit distance
 - State Serialization logic
 - Preserialized state machines offered on GitHub
 
@@ -134,7 +134,7 @@ public static string[] Search(string searchWord, string[] against)
 - No lookup by UTF8 byte arrays.
 - No support for surrogate character pairs.
 - Only ordinal character comparison, whether case sensitive or insensitive.
-- Maximum Levenshtein Distance of 7.
+- Maximum Levenshtein Distance of 3.
 
 ## Performance
 

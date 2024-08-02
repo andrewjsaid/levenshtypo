@@ -1,18 +1,28 @@
+using System.Collections.Concurrent;
 using Shouldly;
 
 namespace Levenshtypo.Tests;
 
 public class LevenshtomatonTests
 {
-    private Levenshtomaton[] Construct(string word, bool ignoreCase, LevenshtypoMetric metric) => [
-            ParameterizedLevenshtomaton.CreateTemplate(maxEditDistance: 0, metric).Instantiate(word, ignoreCase),
-            ParameterizedLevenshtomaton.CreateTemplate(maxEditDistance: 1, metric).Instantiate(word, ignoreCase),
-            ParameterizedLevenshtomaton.CreateTemplate(maxEditDistance: 2, metric).Instantiate(word, ignoreCase),
-            ParameterizedLevenshtomaton.CreateTemplate(maxEditDistance: 3, metric).Instantiate(word, ignoreCase),
+    private static readonly ConcurrentDictionary<LevenshtypoMetric, ParameterizedLevenshtomaton.Template[]> _cache = new();
+
+    private Levenshtomaton[] Construct(string word, bool ignoreCase, LevenshtypoMetric metric)
+    {
+        var templates = _cache.GetOrAdd(metric, m =>
+        [
+            ParameterizedLevenshtomaton.CreateTemplate(maxEditDistance: 0, metric: m),
+            ParameterizedLevenshtomaton.CreateTemplate(maxEditDistance: 1, metric: m),
+            ParameterizedLevenshtomaton.CreateTemplate(maxEditDistance: 2, metric: m),
+            ParameterizedLevenshtomaton.CreateTemplate(maxEditDistance: 3, metric: m)
+        ]);
+
+        return [..templates.Select(t => t.Instantiate(word, ignoreCase)),
             ignoreCase
-                ? new Distance0Levenshtomaton<CaseInsensitive>(word, metric) 
+                ? new Distance0Levenshtomaton<CaseInsensitive>(word, metric)
                 : new Distance0Levenshtomaton<CaseSensitive>(word, metric)
         ];
+    }
 
     [Theory]
     [InlineData("")]
@@ -22,15 +32,18 @@ public class LevenshtomatonTests
     [InlineData("goodmood")]
     [InlineData("ahab")]
     [InlineData("abcdefgh")]
-    public void Levenshtein_Tests(string word)
+    public void Tests(string word)
     {
-        var automata = Construct(word, ignoreCase: false, metric: LevenshtypoMetric.Levenshtein);
-
-        foreach (var (testWord, distance) in WithAtMostNChanges(word, maxIterations: 100_000))
+        foreach (var metric in new[] { LevenshtypoMetric.Levenshtein, LevenshtypoMetric.RestrictedEdit })
         {
-            foreach (var automaton in automata)
+            var automata = Construct(word, ignoreCase: false, metric: metric);
+
+            foreach (var (testWord, distance) in GetVariations(word, maxIterations: 100_000, metric))
             {
-                Matches(automaton, testWord).ShouldBe(distance <= automaton.MaxEditDistance);
+                foreach (var automaton in automata)
+                {
+                    Matches(automaton, testWord).ShouldBe(distance <= automaton.MaxEditDistance);
+                }
             }
         }
     }
@@ -42,15 +55,18 @@ public class LevenshtomatonTests
     [InlineData("goodmood")]
     [InlineData("ahab")]
     [InlineData("abcdefgh")]
-    public void Levenshtein_CaseSensitivity(string word)
+    public void CaseSensitivity(string word)
     {
-        var caseSensitiveAutomata = Construct(word, ignoreCase: false, metric: LevenshtypoMetric.Levenshtein);
-        var caseInsensitiveAutomata = Construct(word, ignoreCase: true, metric: LevenshtypoMetric.Levenshtein);
-
-        foreach (var automaton in caseSensitiveAutomata.Union(caseInsensitiveAutomata))
+        foreach (var metric in new[] { LevenshtypoMetric.Levenshtein, LevenshtypoMetric.RestrictedEdit })
         {
-            Matches(automaton, word).ShouldBeTrue();
-            Matches(automaton, word.ToUpperInvariant()).ShouldBe(automaton.IgnoreCase);
+            var caseSensitiveAutomata = Construct(word, ignoreCase: false, metric: metric);
+            var caseInsensitiveAutomata = Construct(word, ignoreCase: true, metric: metric);
+
+            foreach (var automaton in caseSensitiveAutomata.Union(caseInsensitiveAutomata))
+            {
+                Matches(automaton, word).ShouldBeTrue();
+                Matches(automaton, word.ToUpperInvariant()).ShouldBe(automaton.IgnoreCase);
+            }
         }
     }
 
@@ -94,7 +110,7 @@ public class LevenshtomatonTests
         }
     }
 
-    private IEnumerable<(string newWord, int changes)> WithAtMostNChanges(string query, int maxIterations)
+    private IEnumerable<(string newWord, int changes)> GetVariations(string query, int maxIterations, LevenshtypoMetric metric)
     {
         if (query.Contains("~"))
         {
@@ -116,7 +132,7 @@ public class LevenshtomatonTests
             {
                 if (seen.Add(changedWord))
                 {
-                    var distance = LevenshteinDistance.Levenshtein(query, changedWord);
+                    var distance = LevenshteinDistance.Calculate(query, changedWord, metric: metric);
                     if (distance < 10)
                     {
                         yield return (changedWord, distance);

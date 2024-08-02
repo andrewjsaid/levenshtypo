@@ -9,16 +9,18 @@
   </PropertyGroup>
   
   <PropertyGroup>
-    <VersionPrefix>1.0.0</VersionPrefix>
     <Authors>Andrew J Said</Authors>
     <LangVersion>12</LangVersion>
-    <Description>Levenshtypo - a .NET fuzzy matching string dictionary
+    <Nullable>enable</Nullable>
+    <Description>
+      Levenshtypo - a .NET fuzzy matching string dictionary
 
-Levenshtypo is a library which allows you to search large data sets by fuzzy matching the key strings.
+      Levenshtypo is a library which allows you to search large data sets by fuzzy matching the key strings.
 
-The dataset is loaded upfront as a sequence of key-value pairs. Once loaded it allows searching for the values which are up to a certain Levenshtein Distance away from a query string.
+      The dataset is loaded upfront as a sequence of key-value pairs. Once loaded it allows searching for the values which are up to a certain Levenshtein Distance away from a query string.
 
-Levenshtein Distance is the number of character insertions, deletions or substitutions required to transform one string into another.</Description>
+      Levenshtein Distance is the number of character insertions, deletions or substitutions required to transform one string into another.
+    </Description>
     <Copyright>MIT</Copyright>
     <PackageProjectUrl>https://github.com/andrewjsaid/levenshtypo</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -27,12 +29,11 @@ Levenshtein Distance is the number of character insertions, deletions or substit
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageIcon>logo.png</PackageIcon>
     <Company>Andrew J Said</Company>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Product>Levenshtypo</Product>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
-    <Nullable>enable</Nullable>
     <IsAotCompatible>True</IsAotCompatible>
   </PropertyGroup>
 
@@ -47,11 +48,6 @@ Levenshtein Distance is the number of character insertions, deletions or substit
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-  </ItemGroup>
-  
-  <ItemGroup>
-    <AdditionalFiles Include="PublicAPI/$(TargetFramework)/PublicAPI.Shipped.txt" />
-    <AdditionalFiles Include="PublicAPI/$(TargetFramework)/PublicAPI.Unshipped.txt" />
   </ItemGroup>
 
   <ItemGroup>

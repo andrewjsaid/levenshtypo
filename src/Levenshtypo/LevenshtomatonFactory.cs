@@ -14,7 +14,7 @@ public sealed class LevenshtomatonFactory
     /// <summary>
     /// Automatons with Levenshtein distance greater than this value are not supported.
     /// </summary>
-    public const int MaxEditDistance = 7;
+    public const int MaxEditDistance = 3;
 
     private readonly ConcurrentDictionary<TemplateKey, ParameterizedLevenshtomaton.Template> _templates = new ();
 
@@ -32,8 +32,7 @@ public sealed class LevenshtomatonFactory
     {
         if (maxEditDistance > MaxEditDistance)
         {
-            // The limitation is purely for practical purposes there's no reason the implementation can't scale.
-            // To support more than 7, we must increase size of characteristicVector from uint to whatever
+            // The limitation is purely for practical purposes as the number of states can truly explode.
             throw new ArgumentOutOfRangeException(nameof(maxEditDistance));
         }
 
