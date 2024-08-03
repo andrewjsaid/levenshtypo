@@ -4,7 +4,7 @@
     /// Illustrates how to calculate Levenshtein distance against
     /// many words faster than using Dynamic Programming
     /// </summary>
-    public class ComputeEditDistanceAgainstManyStrings
+    public class ComputeEditDistanceAgainstManyStringsExample
     {
         // Benchmarks below show that a naive implementation,
         // even if it is well written, is 10x slower than using

@@ -11,12 +11,6 @@ a certain Levenshtein Distance away from a query string.
 is the number of character insertions, deletions or substitutions
 required to transform one string into another.
 
-## Planned Work (Coming Soon)
-
-- Automaton to return edit distance
-- State Serialization logic
-- Preserialized state machines offered on GitHub
-
 ## Installation
 
 Install via [Nuget](https://www.nuget.org/packages/Levenshtypo).
@@ -57,7 +51,9 @@ public class TypoSuggestion
 
     public string[] GetSimilarWords(string word)
     {
-        return _trie.Search(word, maxEditDistance: 2);
+        // RestrictedEdit adds support for swapping adjacent letters
+        // which is a common typo.
+        return _trie.Search(word, maxEditDistance: 2, metric: LevenshtypoMetric.RestrictedEdit);
     }
 }
 ```
@@ -68,11 +64,11 @@ public class TypoSuggestion
 <summary>Find whether a string matches blacklist</summary>
 
 ```csharp
-public class BlacklistDetection
+public class BlacklistDetectionExample
 {
     private readonly Levenshtrie<string> _trie;
 
-    public BlacklistDetection(IEnumerable<string> blacklist)
+    public BlacklistDetectionExample(IEnumerable<string> blacklist)
     {
         _trie = Levenshtrie<string>.Create(
             blacklist.Select(w => new KeyValuePair<string, string>(w, w)),
@@ -81,7 +77,14 @@ public class BlacklistDetection
 
     public bool IsBlacklisted(string word)
     {
-        return _trie.Search(word, maxEditDistance: 1).Contains(word);
+        string[] similarWords = _trie.Search(word, maxEditDistance: 2);
+        return similarWords.Any(similarWord => DetailedCompare(similarWord, word));
+    }
+
+    private bool DetailedCompare(string blacklistedWord, string word)
+    {
+        // Your custom logic goes here
+        return true;
     }
 }
 ```

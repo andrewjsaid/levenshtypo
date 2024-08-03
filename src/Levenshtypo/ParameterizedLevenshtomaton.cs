@@ -442,7 +442,7 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
         var dot = sb.ToString();
     }
 
-    private static void ToDot(DfaState[] nfaStates, DfaTransition[] nfaTransitions, int maxEditDistance)
+    private static void ToDot(DfaState[] dfaStates, DfaTransition[] dfaTransitions, int maxEditDistance)
     {
         var maxCharacteristicVectorLength = CalculateMaxCharacterizedVectorLength(maxEditDistance);
 
@@ -450,14 +450,14 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
 
         sb.AppendLine("digraph nfa {");
 
-        for (int i = 0; i < nfaStates.Length; i++)
+        for (int i = 0; i < dfaStates.Length; i++)
         {
-            DfaState state = nfaStates[i];
+            DfaState state = dfaStates[i];
             var color = state.IsFinal ? "blue" : (i < maxCharacteristicVectorLength) ? "green" : "black";
             sb.AppendLine($" \"{state.Name}\" [color = {color}];");
 
             var numCharacteristicVectors = checked((int)(1u << state.CharacteristicVectorLength));
-            var transitions = nfaTransitions.AsSpan(state.TransitionStartIndex, numCharacteristicVectors);
+            var transitions = dfaTransitions.AsSpan(state.TransitionStartIndex, numCharacteristicVectors);
 
             var printTransitionsMap = new Dictionary<int, List<string>>();
 
@@ -492,7 +492,7 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
 
             foreach (var (nextStateIndex, labels) in printTransitionsMap)
             {
-                var nextState = nfaStates[nextStateIndex];
+                var nextState = dfaStates[nextStateIndex];
                 var label = string.Join(" or ", labels);
                 sb.AppendLine($"  \"{state.Name}\" -> \"{nextState.Name}\" [label=\"{label}\"];");
             }

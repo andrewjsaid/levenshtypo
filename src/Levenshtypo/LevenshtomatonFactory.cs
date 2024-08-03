@@ -30,7 +30,7 @@ public sealed class LevenshtomatonFactory
     /// <param name="maxEditDistance">The inclusive maximum edit distance for allowed strings.</param>
     public Levenshtomaton Construct(string s, int maxEditDistance, bool ignoreCase = false, LevenshtypoMetric metric = LevenshtypoMetric.Levenshtein)
     {
-        if (maxEditDistance > MaxEditDistance)
+        if (maxEditDistance is > MaxEditDistance or < 0)
         {
             // The limitation is purely for practical purposes as the number of states can truly explode.
             throw new ArgumentOutOfRangeException(nameof(maxEditDistance));

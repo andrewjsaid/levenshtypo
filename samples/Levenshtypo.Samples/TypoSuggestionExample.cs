@@ -17,6 +17,6 @@ public class TypoSuggestionExample
 
     public string[] GetSimilarWords(string word)
     {
-        return _trie.Search(word, maxEditDistance: 2);
+        return _trie.Search(word, maxEditDistance: 2, metric: LevenshtypoMetric.RestrictedEdit);
     }
 }

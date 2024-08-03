@@ -17,6 +17,13 @@ public class BlacklistDetectionExample
 
     public bool IsBlacklisted(string word)
     {
-        return _trie.Search(word, maxEditDistance: 2).Contains(word);
+        string[] similarWords = _trie.Search(word, maxEditDistance: 2);
+        return similarWords.Any(similarWord => DetailedCompare(similarWord, word));
+    }
+
+    private bool DetailedCompare(string blacklistedWord, string word)
+    {
+        // Your custom logic goes here
+        return true;
     }
 }
