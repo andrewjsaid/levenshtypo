@@ -32,7 +32,7 @@ internal class Distance0Levenshtomaton<TCaseSensitivity> : Levenshtomaton where 
 
     private State StartSpecialized() => new State(_s, 0);
 
-    public override LevenshtomatonExecutionState Start() => new LevenshtomatonExecutionState<State>(StartSpecialized());
+    public override LevenshtomatonExecutionState Start() => LevenshtomatonExecutionState.Wrap(StartSpecialized());
 
     private readonly struct State : ILevenshtomatonExecutionState<State>
     {

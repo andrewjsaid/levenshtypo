@@ -1,1 +1,2 @@
 ﻿#nullable enable
+static Levenshtypo.LevenshtomatonExecutionState.Wrap<TState>(TState state) -> Levenshtypo.LevenshtomatonExecutionState!

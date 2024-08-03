@@ -49,6 +49,10 @@ public abstract class LevenshtomatonExecutionState
     /// which is within the Edit Distance of the original text.
     /// </summary>
     public abstract bool IsFinal { get; }
+
+    public static LevenshtomatonExecutionState Wrap<TState>(TState state)
+        where TState : struct, ILevenshtomatonExecutionState<TState>
+        => new LevenshtomatonExecutionState<TState>(state);
 }
 
 internal sealed class LevenshtomatonExecutionState<TState> : LevenshtomatonExecutionState where TState : struct, ILevenshtomatonExecutionState<TState>
