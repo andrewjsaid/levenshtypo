@@ -646,7 +646,7 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
 
     private State StartSpecialized() => new State(this, _startStateIndex, 0);
 
-    public override LevenshtomatonExecutionState Start() => new LevenshtomatonExecutionState<State>(StartSpecialized());
+    public override LevenshtomatonExecutionState Start() => LevenshtomatonExecutionState.FromStruct(StartSpecialized());
 
     public override bool IgnoreCase => typeof(TCaseSensitivity) == typeof(CaseInsensitive);
 

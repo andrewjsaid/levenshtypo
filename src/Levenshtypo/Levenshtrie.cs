@@ -50,10 +50,15 @@ public abstract class Levenshtrie<T> : ILevenshtomatonExecutor<T[]>
     /// Searches for values with a key accepted by the specified search state.
     /// </summary>
     public abstract T[] Search<TSearchState>(TSearchState searcher)
-        where TSearchState : struct, ILevenshtomatonExecutionState<TSearchState>;
+        where TSearchState : ILevenshtomatonExecutionState<TSearchState>;
+
+    /// <summary>
+    /// Searches for values with a key accepted by the specified search state.
+    /// </summary>
+    public T[] Search(LevenshtomatonExecutionState searcher)
+        => Search<LevenshtomatonExecutionState>(searcher);
 
     T[] ILevenshtomatonExecutor<T[]>.ExecuteAutomaton<TSearchState>(TSearchState state)
-        where TSearchState : struct
         => Search(state);
 }
 
@@ -238,7 +243,7 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
     public override T[] Search(Levenshtomaton automaton)
     {
-        if(automaton.IgnoreCase != IgnoreCase)
+        if (automaton.IgnoreCase != IgnoreCase)
         {
             throw new ArgumentException("Case sensitivity of automaton does not match.");
         }

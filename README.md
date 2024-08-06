@@ -221,17 +221,17 @@ AMD Ryzen 9 5950X, 1 CPU, 32 logical and 16 physical cores
 
 
 ```
-| Method                | Mean              | Error             | StdDev            | Gen0   | Allocated |
-|---------------------- |------------------:|------------------:|------------------:|-------:|----------:|
-| Distance0_Dictionary  |          8.623 ns |         0.0761 ns |         0.0712 ns |      - |         - |
-| Distance0_Levenshtypo |        597.182 ns |         2.3004 ns |         1.7960 ns | 0.0124 |     208 B |
-| Distance1_Levenshtypo |     22,879.582 ns |       149.3766 ns |       139.7270 ns |      - |     424 B |
-| Distance2_Levenshtypo |    305,240.260 ns |     2,498.8835 ns |     2,337.4572 ns |      - |    1832 B |
-| Distance3_Levenshtypo |  1,690,603.294 ns |    11,989.1677 ns |    11,214.6749 ns |      - |   17905 B |
-| Distance0_Naive       |    862,346.973 ns |    10,007.3755 ns |     8,871.2777 ns |      - |      89 B |
-| Distance1_Naive       | 98,747,597.143 ns |   564,828.7729 ns |   500,705.9951 ns |      - |    2770 B |
-| Distance2_Naive       | 98,188,072.000 ns |   638,972.9260 ns |   597,695.6714 ns |      - |     822 B |
-| Distance3_Naive       | 99,317,118.889 ns | 1,241,670.8616 ns | 1,161,459.6944 ns |      - |    4443 B |
+| Method                | Mean              | Error           | StdDev          | Gen0   | Allocated |
+|---------------------- |------------------:|----------------:|----------------:|-------:|----------:|
+| Distance0_Dictionary  |          9.007 ns |       0.0234 ns |       0.0195 ns |      - |         - |
+| Distance0_Levenshtypo |        322.926 ns |       1.5243 ns |       1.1901 ns | 0.0124 |     208 B |
+| Distance1_Levenshtypo |     22,519.695 ns |     232.5673 ns |     217.5436 ns |      - |     424 B |
+| Distance2_Levenshtypo |    295,440.729 ns |   1,586.4122 ns |   1,483.9309 ns |      - |    1832 B |
+| Distance3_Levenshtypo |  1,664,370.716 ns |  15,674.7869 ns |  14,662.2054 ns |      - |   17905 B |
+| Distance0_Naive       |    780,626.039 ns |   7,933.1235 ns |   7,032.5073 ns |      - |      89 B |
+| Distance1_Naive       | 61,204,417.460 ns | 615,593.6713 ns | 545,707.7552 ns |      - |     170 B |
+| Distance2_Naive       | 60,461,657.143 ns | 404,845.7522 ns | 358,885.2144 ns |      - |     690 B |
+| Distance3_Naive       | 62,736,083.333 ns | 658,735.0546 ns | 616,181.1787 ns |      - |    4356 B |
 
 </details>
 
@@ -251,10 +251,10 @@ AMD Ryzen 9 5950X, 1 CPU, 32 logical and 16 physical cores
 
 
 ```
-| Method              | Mean          | Error        | StdDev       | Gen0       | Gen1      | Gen2      | Allocated    |
-|-------------------- |--------------:|-------------:|-------------:|-----------:|----------:|----------:|-------------:|
-| English_Dictionary  |  32,450.80 μs |   647.413 μs |   770.700 μs |   781.2500 |  781.2500 |  781.2500 |  35524.19 KB |
-| English_Levenshtypo | 282,953.40 μs | 4,376.502 μs | 4,093.783 μs | 27000.0000 | 6000.0000 | 2000.0000 | 527682.66 KB |
+| Method              | Mean          | Error        | StdDev       | Gen0      | Gen1      | Gen2      | Allocated    |
+|-------------------- |--------------:|-------------:|-------------:|----------:|----------:|----------:|-------------:|
+| English_Dictionary  |  32,273.94 μs |   639.336 μs | 1,169.062 μs |  812.5000 |  812.5000 |  812.5000 |  35524.24 KB |
+| English_Levenshtypo | 153,284.31 μs | 2,301.631 μs | 2,152.947 μs | 4000.0000 | 1000.0000 | 1000.0000 | 142181.21 KB |
 
 </details>
 

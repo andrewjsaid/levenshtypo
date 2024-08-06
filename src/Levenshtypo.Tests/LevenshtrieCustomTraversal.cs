@@ -1,4 +1,3 @@
-using Levenshtypo;
 using Shouldly;
 
 namespace Levenshtypo.Tests;
@@ -37,10 +36,8 @@ public class LevenshtrieCustomTraversal
         var farm = LevenshtomatonFactory.Instance.Construct("farm", 1, ignoreCase: true);
 
         var searchState = new OrLevenshtomatonExecutionState(
-            LevenshtomatonExecutionState.Wrap(
-                new AndLevenshtomatonExecutionState(tractor.Start(), factory.Start())),
-            LevenshtomatonExecutionState.Wrap(
-                new AndLevenshtomatonExecutionState(farm.Start(), LevenshtomatonExecutionState.Wrap(new OnlyGetNChars(3)))));
+                new AndLevenshtomatonExecutionState(tractor.Start(), factory.Start()),
+                new AndLevenshtomatonExecutionState(farm.Start(), LevenshtomatonExecutionState.FromStruct(new OnlyGetNChars(3))));
 
         var found = trie.Search(searchState);
 
@@ -67,7 +64,7 @@ public class LevenshtrieCustomTraversal
         }
     }
 
-    private struct AndLevenshtomatonExecutionState : ILevenshtomatonExecutionState<AndLevenshtomatonExecutionState>
+    private class AndLevenshtomatonExecutionState : LevenshtomatonExecutionState
     {
         private LevenshtomatonExecutionState _state1;
         private LevenshtomatonExecutionState _state2;
@@ -80,7 +77,7 @@ public class LevenshtrieCustomTraversal
             _state2 = state2;
         }
 
-        public bool MoveNext(char c, out AndLevenshtomatonExecutionState next)
+        public override bool MoveNext(char c, out LevenshtomatonExecutionState next)
         {
             if (_state1.MoveNext(c, out var nextState1) && _state2.MoveNext(c, out var nextState2))
             {
@@ -88,14 +85,14 @@ public class LevenshtrieCustomTraversal
                 return true;
             }
 
-            next = default;
+            next = default!;
             return false;
         }
 
-        public bool IsFinal => _state1.IsFinal && _state2.IsFinal;
+        public override bool IsFinal => _state1.IsFinal && _state2.IsFinal;
     }
 
-    private struct OrLevenshtomatonExecutionState : ILevenshtomatonExecutionState<OrLevenshtomatonExecutionState>
+    private class OrLevenshtomatonExecutionState : LevenshtomatonExecutionState
     {
         private LevenshtomatonExecutionState? _state1;
         private LevenshtomatonExecutionState? _state2;
@@ -108,7 +105,7 @@ public class LevenshtrieCustomTraversal
             _state2 = state2;
         }
 
-        public bool MoveNext(char c, out OrLevenshtomatonExecutionState next)
+        public override bool MoveNext(char c, out LevenshtomatonExecutionState next)
         {
             LevenshtomatonExecutionState? nextState1;
             LevenshtomatonExecutionState? nextState2;
@@ -139,10 +136,10 @@ public class LevenshtrieCustomTraversal
                 return true;
             }
 
-            next = default;
+            next = default!;
             return false;
         }
 
-        public bool IsFinal => _state1?.IsFinal == true|| _state2?.IsFinal == true;
+        public override bool IsFinal => _state1?.IsFinal == true|| _state2?.IsFinal == true;
     }
 }

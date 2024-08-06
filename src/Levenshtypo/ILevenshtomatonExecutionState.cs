@@ -1,4 +1,6 @@
-﻿namespace Levenshtypo;
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace Levenshtypo;
 
 /// <summary>
 /// Represents execution of an automaton.
@@ -9,7 +11,7 @@
 /// In using this format of generics (struct), the users of this interface
 /// will force the JIT to compile a specialized method for each type of struct.
 /// </remarks>
-public interface ILevenshtomatonExecutionState<TSelf> where TSelf : struct, ILevenshtomatonExecutionState<TSelf>
+public interface ILevenshtomatonExecutionState<TSelf> where TSelf : ILevenshtomatonExecutionState<TSelf>
 {
     /// <summary>
     /// Consume a character in the input string, advancing the automaton to the next state.
@@ -34,7 +36,7 @@ public interface ILevenshtomatonExecutionState<TSelf> where TSelf : struct, ILev
 /// This version of the automaton execution state relies on boxing and
 /// should be avoided in performance critical scenarios.
 /// </remarks>
-public abstract class LevenshtomatonExecutionState
+public abstract class LevenshtomatonExecutionState : ILevenshtomatonExecutionState<LevenshtomatonExecutionState>
 {
     /// <summary>
     /// Consume a character in the input string, advancing the automaton to the next state.
@@ -50,16 +52,20 @@ public abstract class LevenshtomatonExecutionState
     /// </summary>
     public abstract bool IsFinal { get; }
 
-    public static LevenshtomatonExecutionState Wrap<TState>(TState state)
-        where TState : struct, ILevenshtomatonExecutionState<TState>
-        => new LevenshtomatonExecutionState<TState>(state);
+    /// <summary>
+    /// Wraps a struct implementation of <see cref="ILevenshtomatonExecutionState{TSelf}"/> into a class.
+    /// </summary>
+    public static LevenshtomatonExecutionState FromStruct<TState>(TState state) where TState : struct, ILevenshtomatonExecutionState<TState>
+    {
+        return new StructWrappedLevenshtomatonExecutionState<TState>(state);
+    }
 }
 
-internal sealed class LevenshtomatonExecutionState<TState> : LevenshtomatonExecutionState where TState : struct, ILevenshtomatonExecutionState<TState>
+internal sealed class StructWrappedLevenshtomatonExecutionState<TState> : LevenshtomatonExecutionState where TState : struct, ILevenshtomatonExecutionState<TState>
 {
     private readonly TState _state;
 
-    public LevenshtomatonExecutionState(TState state)
+    public StructWrappedLevenshtomatonExecutionState(TState state)
     {
         _state = state;
     }
@@ -67,7 +73,7 @@ internal sealed class LevenshtomatonExecutionState<TState> : LevenshtomatonExecu
     public override bool MoveNext(char c, out LevenshtomatonExecutionState next)
     {
         var result = _state.MoveNext(c, out var nextState);
-        next = new LevenshtomatonExecutionState<TState>(nextState);
+        next = new StructWrappedLevenshtomatonExecutionState<TState>(nextState);
         return result;
     }
 

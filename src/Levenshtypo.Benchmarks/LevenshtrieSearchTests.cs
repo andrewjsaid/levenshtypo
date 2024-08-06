@@ -56,7 +56,7 @@ public class LevenshtrieSearchTests
     public object Distance1_Levenshtypo() => _levenshtrie.Search(_automaton1);
 
     [Benchmark]
-    public object Naive_Search_1()
+    public object Distance2_Naive()
     {
         var results = new List<string>();
         for (int i = 0; i < _englishWords.Count; i++)
@@ -74,7 +74,7 @@ public class LevenshtrieSearchTests
     public object Distance2_Levenshtypo() => _levenshtrie.Search(_automaton2);
 
     [Benchmark]
-    public object Naive_Search3()
+    public object Distance3_Naive()
     {
         var results = new List<string>();
         for (int i = 0; i < _englishWords.Count; i++)
