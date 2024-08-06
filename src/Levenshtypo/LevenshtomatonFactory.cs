@@ -28,6 +28,8 @@ public sealed class LevenshtomatonFactory
     /// </summary>
     /// <param name="s">The string against which others will be compared.</param>
     /// <param name="maxEditDistance">The inclusive maximum edit distance for allowed strings.</param>
+    /// <param name="ignoreCase">When true then the automaton will ignore casing differences.</param>
+    /// <param name="metric">The metric.</param>
     public Levenshtomaton Construct(string s, int maxEditDistance, bool ignoreCase = false, LevenshtypoMetric metric = LevenshtypoMetric.Levenshtein)
     {
         if (maxEditDistance is > MaxEditDistance or < 0)
@@ -39,7 +41,7 @@ public sealed class LevenshtomatonFactory
         if (s.Any(char.IsSurrogate))
         {
             // The limitation is because I haven't had the time to implement otherwise.
-            throw new ArgumentException(nameof(s), "Unable to construct a Levenshtomaton for this input.");
+            throw new ArgumentException("Unable to construct a Levenshtomaton for this input.", nameof(s));
         }
 
         if (maxEditDistance == 0)

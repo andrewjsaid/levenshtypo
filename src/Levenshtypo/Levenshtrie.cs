@@ -78,31 +78,43 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
     private bool IgnoreCase => typeof(TCaseSensitivity) == typeof(CaseInsensitive);
 
+
     internal static Levenshtrie<T> Create(IEnumerable<KeyValuePair<string, T>> source)
     {
-        var entries = new List<Entry>();
-        var results = new List<T>();
-        var tailData = new List<char>();
+        var flatSource = source.ToArray();
+
+        const int ArbitraryMultiplicationFactor = 5;
+
+        var entries = new List<Entry>(flatSource.Length * ArbitraryMultiplicationFactor);
+        var results = new List<T>(flatSource.Length);
+        var tailData = new List<char>(flatSource.Length * ArbitraryMultiplicationFactor);
+
+        Array.Sort(flatSource, (a, b) => default(TCaseSensitivity).KeyComparer.Compare(a.Key, b.Key));
 
         entries.Add(new Entry());
-        var rootEntry = AppendChildren('\0', source.ToArray(), nextDiscriminatorIndex: 0);
+        var rootEntry = AppendChildren('\0', flatSource, nextDiscriminatorIndex: 0);
         entries[0] = rootEntry;
 
 
         return new Levenshtrie<T, TCaseSensitivity>(entries.ToArray(), results.ToArray(), tailData.ToArray());
 
-        Entry AppendChildren(char nodeValue, IReadOnlyList<KeyValuePair<string, T>> group, int nextDiscriminatorIndex)
+        Entry AppendChildren(char nodeValue, Span<KeyValuePair<string, T>> group, int nextDiscriminatorIndex)
         {
             int resultIndex = -1;
 
             const int NumCharsForDirectComparison = 2;
-            if (nextDiscriminatorIndex != 0 && group.Count == 1 && group[0].Key.Length - nextDiscriminatorIndex >= NumCharsForDirectComparison)
+            if (nextDiscriminatorIndex != 0
+                && group.Length == 1
+                && group[0].Key.Length - nextDiscriminatorIndex >= NumCharsForDirectComparison)
             {
                 resultIndex = results.Count;
                 results.Add(group[0].Value);
 
                 var tailDataIndex = tailData.Count;
                 var entryTailData = group[0].Key.AsSpan(nextDiscriminatorIndex);
+
+                // In .NET 9 we can use alternate lookup to re-use tail data.
+
 #if NET8_0_OR_GREATER
                 tailData.AddRange(entryTailData);
 #else
@@ -120,15 +132,18 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
                 };
             }
 
-            var childNodes = new SortedDictionary<ushort, List<KeyValuePair<string, T>>>();
+            var childGroups = new List<Range>();
+            var currentDiscriminator = '\0';
+            var currentRange = new Range();
 
-            foreach (var item in group)
+            for (var gIndex = 0; gIndex < group.Length; gIndex++)
             {
+                var item = group[gIndex];
                 if (item.Key.Length == nextDiscriminatorIndex)
                 {
                     if (resultIndex != -1)
                     {
-                        throw new ArgumentException(nameof(source), "May not use this data structure with duplicate keys.");
+                        throw new ArgumentException("May not use this data structure with duplicate keys.", nameof(source));
                     }
 
                     resultIndex = results.Count;
@@ -136,35 +151,50 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
                 }
                 else
                 {
-                    var nextKey = default(TCaseSensitivity).Normalize(item.Key[nextDiscriminatorIndex]);
-                    if (!childNodes.TryGetValue(nextKey, out var targetList))
+                    var discriminator = item.Key[nextDiscriminatorIndex];
+
+                    if (discriminator == currentDiscriminator)
                     {
-                        childNodes.Add(nextKey, targetList = new List<KeyValuePair<string, T>>());
+                        currentRange = new Range(currentRange.Start, gIndex + 1);
                     }
-                    targetList.Add(item);
+                    else
+                    {
+                        if (!currentRange.Equals(default))
+                        {
+                            childGroups.Add(currentRange);
+                        }
+                        currentRange = new Range(gIndex, gIndex + 1);
+                        currentDiscriminator = discriminator;
+                    }
                 }
             }
 
-            int childEntriesStartIndex = entries.Count;
+            if (!currentRange.Equals(default))
+            {
+                childGroups.Add(currentRange);
+            }
 
-            foreach (var entry in childNodes)
+            int childEntriesStartIndex = entries.Count;
+            int writeIndex = childEntriesStartIndex;
+
+            foreach (var _ in childGroups)
             {
                 entries.Add(new Entry());
             }
 
-            int writeIndex = childEntriesStartIndex;
-            foreach (var entry in childNodes.ToArray())
+            foreach (var entry in childGroups)
             {
-                entries[writeIndex++] = AppendChildren((char)entry.Key, entry.Value, nextDiscriminatorIndex + 1);
+                var nextGroup = group[entry];
+                var nextKey = nextGroup[0].Key[nextDiscriminatorIndex];
+                entries[writeIndex++] = AppendChildren(nextKey, nextGroup, nextDiscriminatorIndex + 1);
             }
-
 
             return new Entry
             {
                 EntryValue = nodeValue,
-                ChildEntriesStartIndex = childNodes.Count == 0 ? 0 : childEntriesStartIndex,
+                ChildEntriesStartIndex = childGroups.Count == 0 ? 0 : childEntriesStartIndex,
                 ResultIndex = resultIndex,
-                NumChildren = childNodes.Count
+                NumChildren = childGroups.Count
             };
         }
     }
@@ -308,5 +338,4 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         public int NumChildren;
         public int ResultIndex;
     }
-
 }

@@ -165,7 +165,6 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
         var states = new List<DfaState>();
         var transitions = new List<DfaTransition>();
         var multiStateBuilder = new List<int>();
-        var transitionsBuilder = new List<char>();
 
         var seen = new List<int[]>();
 

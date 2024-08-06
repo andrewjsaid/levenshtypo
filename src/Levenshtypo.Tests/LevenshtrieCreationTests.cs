@@ -1,5 +1,3 @@
-using Levenshtypo;
-
 namespace Levenshtypo.Tests;
 
 public class LevenshtrieCreationTests

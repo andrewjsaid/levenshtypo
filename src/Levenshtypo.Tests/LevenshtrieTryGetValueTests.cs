@@ -1,5 +1,4 @@
-﻿using Levenshtypo;
-using Shouldly;
+﻿using Shouldly;
 
 namespace Levenshtypo.Tests;
 

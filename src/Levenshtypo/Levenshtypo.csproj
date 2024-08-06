@@ -29,7 +29,7 @@
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageIcon>logo.png</PackageIcon>
     <Company>Andrew J Said</Company>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Product>Levenshtypo</Product>
   </PropertyGroup>
 

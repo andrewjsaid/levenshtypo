@@ -50,7 +50,7 @@ public abstract class Levenshtomaton
 
     /// <summary>
     /// Begins execution of the automaton. It is easier to get started
-    /// using this method than using <see cref="Execute"/>, however
+    /// using this method than using <see cref="Execute{T}"/>, however
     /// this method introduces boxing during the execution.
     /// </summary>
     public abstract LevenshtomatonExecutionState Start();

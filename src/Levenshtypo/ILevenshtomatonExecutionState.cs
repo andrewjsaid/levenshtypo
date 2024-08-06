@@ -1,6 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-
-namespace Levenshtypo;
+﻿namespace Levenshtypo;
 
 /// <summary>
 /// Represents execution of an automaton.
@@ -63,7 +61,7 @@ public abstract class LevenshtomatonExecutionState : ILevenshtomatonExecutionSta
 
 internal sealed class StructWrappedLevenshtomatonExecutionState<TState> : LevenshtomatonExecutionState where TState : struct, ILevenshtomatonExecutionState<TState>
 {
-    private readonly TState _state;
+    private TState _state;
 
     public StructWrappedLevenshtomatonExecutionState(TState state)
     {
