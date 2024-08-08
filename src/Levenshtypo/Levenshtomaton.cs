@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Buffers;
+using System.Diagnostics;
+using System.Text;
 
 namespace Levenshtypo;
 
@@ -57,10 +60,9 @@ public abstract class Levenshtomaton
 
     private protected bool DefaultMatchesImplementation<TState>(ReadOnlySpan<char> text, TState state) where TState : struct, ILevenshtomatonExecutionState<TState>
     {
-        var i = 0;
-        while (i < text.Length)
+        foreach (var rune in text.EnumerateRunes())
         {
-            if (!state.MoveNext(text[i++], out state))
+            if (!state.MoveNext(rune, out state))
             {
                 return false;
             }

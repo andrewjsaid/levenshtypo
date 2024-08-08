@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Text;
 
 namespace Levenshtypo;
 
@@ -78,12 +80,18 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
     private bool IgnoreCase => typeof(TCaseSensitivity) == typeof(CaseInsensitive);
 
-
     internal static Levenshtrie<T> Create(IEnumerable<KeyValuePair<string, T>> source)
     {
-        var flatSource = source.ToArray();
+        var flatSource = source.Select(s => new Kvp(s)).ToArray();
 
         const int ArbitraryMultiplicationFactor = 5;
+
+        var inputKvps = new Kvp[flatSource.Length];
+        for (int i = 0; i < flatSource.Length; i++)
+        {
+            inputKvps[i].Key = flatSource[i].Key;
+            inputKvps[i].Value = flatSource[i].Value;
+        }
 
         var entries = new List<Entry>(flatSource.Length * ArbitraryMultiplicationFactor);
         var results = new List<T>(flatSource.Length);
@@ -92,26 +100,26 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         Array.Sort(flatSource, (a, b) => default(TCaseSensitivity).KeyComparer.Compare(a.Key, b.Key));
 
         entries.Add(new Entry());
-        var rootEntry = AppendChildren('\0', flatSource, nextDiscriminatorIndex: 0);
+        var rootEntry = AppendChildren(Rune.ReplacementChar, flatSource);
         entries[0] = rootEntry;
 
 
         return new Levenshtrie<T, TCaseSensitivity>(entries.ToArray(), results.ToArray(), tailData.ToArray());
 
-        Entry AppendChildren(char nodeValue, Span<KeyValuePair<string, T>> group, int nextDiscriminatorIndex)
+        Entry AppendChildren(Rune nodeValue, Span<Kvp> group)
         {
             int resultIndex = -1;
 
             const int NumCharsForDirectComparison = 2;
-            if (nextDiscriminatorIndex != 0
-                && group.Length == 1
-                && group[0].Key.Length - nextDiscriminatorIndex >= NumCharsForDirectComparison)
+            if (group.Length == 1
+                && group[0].NextReadIndex != 0
+                && group[0].Key.Length - group[0].NextReadIndex >= NumCharsForDirectComparison)
             {
                 resultIndex = results.Count;
                 results.Add(group[0].Value);
 
                 var tailDataIndex = tailData.Count;
-                var entryTailData = group[0].Key.AsSpan(nextDiscriminatorIndex);
+                var entryTailData = group[0].Key.AsSpan(group[0].NextReadIndex);
 
                 // In .NET 9 we can use alternate lookup to re-use tail data.
 
@@ -132,14 +140,14 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
                 };
             }
 
-            var childGroups = new List<Range>();
-            var currentDiscriminator = '\0';
+            var childGroups = new List<(Rune rune, Range range)>();
+            Rune currentDiscriminator = default;
             var currentRange = new Range();
 
             for (var gIndex = 0; gIndex < group.Length; gIndex++)
             {
-                var item = group[gIndex];
-                if (item.Key.Length == nextDiscriminatorIndex)
+                ref var item = ref group[gIndex];
+                if (item.Key.Length == item.NextReadIndex)
                 {
                     if (resultIndex != -1)
                     {
@@ -151,7 +159,8 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
                 }
                 else
                 {
-                    var discriminator = item.Key[nextDiscriminatorIndex];
+                    Rune.DecodeFromUtf16(item.Key.AsSpan(item.NextReadIndex), out var discriminator, out var charsRead);
+                    item.NextReadIndex += charsRead;
 
                     if (discriminator == currentDiscriminator)
                     {
@@ -161,7 +170,7 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
                     {
                         if (!currentRange.Equals(default))
                         {
-                            childGroups.Add(currentRange);
+                            childGroups.Add((currentDiscriminator, currentRange));
                         }
                         currentRange = new Range(gIndex, gIndex + 1);
                         currentDiscriminator = discriminator;
@@ -171,7 +180,7 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
             if (!currentRange.Equals(default))
             {
-                childGroups.Add(currentRange);
+                childGroups.Add((currentDiscriminator, currentRange));
             }
 
             int childEntriesStartIndex = entries.Count;
@@ -182,11 +191,9 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
                 entries.Add(new Entry());
             }
 
-            foreach (var entry in childGroups)
+            foreach (var (entryDiscriminator, entryRange) in childGroups)
             {
-                var nextGroup = group[entry];
-                var nextKey = nextGroup[0].Key[nextDiscriminatorIndex];
-                entries[writeIndex++] = AppendChildren(nextKey, nextGroup, nextDiscriminatorIndex + 1);
+                entries[writeIndex++] = AppendChildren(entryDiscriminator, group[entryRange]);
             }
 
             return new Entry
@@ -204,17 +211,18 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         var entries = _entries;
 
         var entry = _entries[0];
-        var keyIndex = 0;
+        var keySpan = key.AsSpan();
 
-        while (keyIndex < key.Length)
+        while (keySpan.Length > 0)
         {
-            var nextChar = key[keyIndex++];
+            Rune.DecodeFromUtf16(keySpan, out var nextRune, out var charsConsumed);
+            keySpan = keySpan[charsConsumed..];
 
             var found = false;
             var childEntries = entries.AsSpan(entry.ChildEntriesStartIndex, entry.NumChildren);
             for (int i = 0; i < childEntries.Length; i++)
             {
-                if (default(TCaseSensitivity).Equals(childEntries[i].EntryValue, nextChar))
+                if (default(TCaseSensitivity).Equals(childEntries[i].EntryValue, nextRune))
                 {
                     found = true;
                     entry = childEntries[i];
@@ -222,25 +230,27 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
                     var entryTailDataLength = entry.TailDataLength;
                     if (entryTailDataLength > 0)
                     {
-                        if (keyIndex + entryTailDataLength > key.Length)
+                        var tailData = _tailData.AsSpan(entry.TailDataIndex, entry.TailDataLength);
+                        while ((tailData.Length | keySpan.Length) > 0)
                         {
-                            found = false;
-                        }
-                        else
-                        {
-                            for (int dataOffset = 0; dataOffset < entryTailDataLength; dataOffset++)
+                            Rune.DecodeFromUtf16(keySpan, out nextRune, out charsConsumed);
+                            keySpan = keySpan[charsConsumed..];
+
+                            Rune.DecodeFromUtf16(tailData, out var tailRune, out charsConsumed);
+                            tailData = tailData[charsConsumed..];
+
+                            if (!default(TCaseSensitivity).Equals(nextRune, tailRune))
                             {
-                                var c1 = _tailData[entry.TailDataIndex + dataOffset];
-                                var c2 = key[keyIndex + dataOffset];
-                                if (!default(TCaseSensitivity).Equals(c1, c2))
-                                {
-                                    found = false;
-                                    break;
-                                }
+                                found = false;
+                                break;
                             }
                         }
 
-                        keyIndex += entry.TailDataLength;
+                        if (tailData.Length > 0)
+                        {
+                            // We've consumed the key without consuming the tail data
+                            found = false;
+                        }
                     }
 
                     break;
@@ -301,14 +311,16 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
                     if (entryTailDataLength > 0)
                     {
                         var tailData = _tailData.AsSpan(childEntry.TailDataIndex, entryTailDataLength);
-                        for (int tailDataIndex = 0; tailDataIndex < tailData.Length; tailDataIndex++)
+
+                        foreach (var tailDataRune in tailData.EnumerateRunes())
                         {
-                            if (!nextEnumerator.MoveNext(tailData[tailDataIndex], out nextEnumerator))
+                            if (!nextEnumerator.MoveNext(tailDataRune, out nextEnumerator))
                             {
                                 matchesTailData = false;
                                 break;
                             }
                         }
+
                     }
 
                     if (matchesTailData)
@@ -328,10 +340,23 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
     T[] ILevenshtomatonExecutor<T[]>.ExecuteAutomaton<TSearchState>(TSearchState state)
         => Search(state);
 
+    private struct Kvp
+    {
+        public Kvp(KeyValuePair<string, T> input)
+        {
+            Key = input.Key;
+            Value = input.Value;
+        }
+
+        public string Key;
+        public int NextReadIndex;
+        public T Value;
+    }
+
     [DebuggerDisplay("{EntryValue}")]
     private struct Entry
     {
-        public char EntryValue;
+        public Rune EntryValue;
         public int TailDataIndex;
         public int TailDataLength;
         public int ChildEntriesStartIndex;

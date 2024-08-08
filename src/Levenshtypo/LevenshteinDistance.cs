@@ -1,5 +1,7 @@
 using System;
 using System.Buffers;
+using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Levenshtypo;
 
@@ -25,17 +27,79 @@ public static class LevenshteinDistance
     /// </summary>
     public static int Levenshtein(ReadOnlySpan<char> a, ReadOnlySpan<char> b, bool ignoreCase = false)
     {
-        if (ignoreCase)
+        if (!ContainsSurrogate(a) && !ContainsSurrogate(b))
         {
-            return Levenshtein<CaseInsensitive>(a, b);
+            if (ignoreCase)
+            {
+                return LevenshteinT<char, CaseInsensitive>(a, b);
+            }
+            else
+            {
+                return LevenshteinT<char, CaseSensitive>(a, b);
+            }
         }
         else
         {
-            return Levenshtein<CaseSensitive>(a, b);
+            if (ignoreCase)
+            {
+                return LevenshteinRune<CaseInsensitive>(a, b);
+            }
+            else
+            {
+                return LevenshteinRune<CaseSensitive>(a, b);
+            }
         }
     }
 
-    private static int Levenshtein<TCaseSensitivity>(ReadOnlySpan<char> a, ReadOnlySpan<char> b) where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
+    private static int LevenshteinRune<TCaseSensitivity>(ReadOnlySpan<char> aChar, ReadOnlySpan<char> bChar) where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
+    {
+        Rune[]? rentedRuneArr = null;
+
+        scoped Span<Rune> a;
+        scoped Span<Rune> b;
+
+        // The number of runes will always be equal or less than the number of chars
+        if ((aChar.Length + bChar.Length) < MaxStackallocBytes / 4 / 2)
+        {
+            a = stackalloc Rune[aChar.Length];
+            b = stackalloc Rune[bChar.Length];
+        }
+        else
+        {
+            rentedRuneArr = ArrayPool<Rune>.Shared.Rent(aChar.Length + bChar.Length);
+            a = rentedRuneArr.AsSpan(0, aChar.Length);
+            b = rentedRuneArr.AsSpan(aChar.Length, bChar.Length);
+        }
+        
+        int runeWriteIndex = 0;
+        foreach (var rune in aChar.EnumerateRunes())
+        {
+            a[runeWriteIndex++] = rune;
+        }
+
+        a = a[..runeWriteIndex];
+
+        runeWriteIndex = 0;
+        foreach (var rune in bChar.EnumerateRunes())
+        {
+            b[runeWriteIndex++] = rune;
+        }
+
+        b = b[..runeWriteIndex];
+
+        var result = LevenshteinT<Rune, TCaseSensitivity>(a, b);
+
+        if (rentedRuneArr is not null)
+        {
+            ArrayPool<Rune>.Shared.Return(rentedRuneArr);
+        }
+
+        return result;
+    }
+
+    private static int LevenshteinT<T, TCaseSensitivity>(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
+        where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
+        where T : struct
     {
         if (a.Length < b.Length)
         {
@@ -78,7 +142,7 @@ public static class LevenshteinDistance
 
             for (int j = 0; j < b.Length; j++)
             {
-                var cost = default(TCaseSensitivity).Equals(ai, b[j]) ? 0 : 1;
+                var cost = CharEquals<T, TCaseSensitivity>(ai, b[j]) ? 0 : 1;
                 var deletionCost = d0[j + 1] + 1;
                 var insertionCost = d1[j] + 1;
                 var substitutionCost = d0[j] + cost;
@@ -104,17 +168,79 @@ public static class LevenshteinDistance
     /// </summary>
     public static int RestrictedEdit(ReadOnlySpan<char> a, ReadOnlySpan<char> b, bool ignoreCase = false)
     {
-        if (ignoreCase)
+        if (!ContainsSurrogate(a) && !ContainsSurrogate(b))
         {
-            return RestrictedEdit<CaseInsensitive>(a, b);
+            if (ignoreCase)
+            {
+                return RestrictedEditT<char, CaseInsensitive>(a, b);
+            }
+            else
+            {
+                return RestrictedEditT<char, CaseSensitive>(a, b);
+            }
         }
         else
         {
-            return RestrictedEdit<CaseSensitive>(a, b);
+            if (ignoreCase)
+            {
+                return RestrictedEditRune<CaseInsensitive>(a, b);
+            }
+            else
+            {
+                return RestrictedEditRune<CaseSensitive>(a, b);
+            }
         }
     }
 
-    private static int RestrictedEdit<TCaseSensitivity>(ReadOnlySpan<char> a, ReadOnlySpan<char> b) where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
+    private static int RestrictedEditRune<TCaseSensitivity>(ReadOnlySpan<char> aChar, ReadOnlySpan<char> bChar) where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
+    {
+        Rune[]? rentedRuneArr = null;
+
+        scoped Span<Rune> a;
+        scoped Span<Rune> b;
+
+        // The number of runes will always be equal or less than the number of chars
+        if ((aChar.Length + bChar.Length) < MaxStackallocBytes / 4 / 2)
+        {
+            a = stackalloc Rune[aChar.Length];
+            b = stackalloc Rune[bChar.Length];
+        }
+        else
+        {
+            rentedRuneArr = ArrayPool<Rune>.Shared.Rent(aChar.Length + bChar.Length);
+            a = rentedRuneArr.AsSpan(0, aChar.Length);
+            b = rentedRuneArr.AsSpan(aChar.Length, bChar.Length);
+        }
+        
+        int runeWriteIndex = 0;
+        foreach (var rune in aChar.EnumerateRunes())
+        {
+            a[runeWriteIndex++] = rune;
+        }
+
+        a = a[..runeWriteIndex];
+
+        runeWriteIndex = 0;
+        foreach (var rune in bChar.EnumerateRunes())
+        {
+            b[runeWriteIndex++] = rune;
+        }
+
+        b = b[..runeWriteIndex];
+
+        var result = RestrictedEditT<Rune, TCaseSensitivity>(a, b);
+
+        if (rentedRuneArr is not null)
+        {
+            ArrayPool<Rune>.Shared.Return(rentedRuneArr);
+        }
+
+        return result;
+    }
+
+    private static int RestrictedEditT<T, TCaseSensitivity>(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
+        where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
+        where T : struct
     {
         if (a.Length < b.Length)
         {
@@ -160,15 +286,15 @@ public static class LevenshteinDistance
 
             for (int j = 0; j < b.Length; j++)
             {
-                var cost = default(TCaseSensitivity).Equals(ai, b[j]) ? 0 : 1;
+                var cost = CharEquals<T, TCaseSensitivity>(ai, b[j]) ? 0 : 1;
                 var deletionCost = d0[j + 1] + 1;
                 var insertionCost = d1[j] + 1;
                 var substitutionCost = d0[j] + cost;
                 var min = Math.Min(Math.Min(deletionCost, insertionCost), substitutionCost);
 
                 if (i > 0 && j > 0
-                        && default(TCaseSensitivity).Equals(a[i - 1], b[j - 0])
-                        && default(TCaseSensitivity).Equals(a[i - 0], b[j - 1]))
+                    && CharEquals<T, TCaseSensitivity>(a[i - 1], b[j - 0])
+                    && CharEquals<T, TCaseSensitivity>(a[i - 0], b[j - 1]))
                 {
                     min = Math.Min(min, dN1[j - 1] + 1);
                 }
@@ -190,4 +316,35 @@ public static class LevenshteinDistance
         return d0[b.Length];
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool CharEquals<T, TCaseSensitivity>(T a, T b)
+        where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
+        where T : struct
+    {
+        if (typeof(T) == typeof(Rune))
+        {
+            return default(TCaseSensitivity).Equals(Unsafe.As<T, Rune>(ref a), Unsafe.As<T, Rune>(ref b));
+        }
+        else if (typeof(T) == typeof(char))
+        {
+            return default(TCaseSensitivity).Equals(Unsafe.As<T, char>(ref a), Unsafe.As<T, char>(ref b));
+        }
+        else
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private static bool ContainsSurrogate(ReadOnlySpan<char> text)
+    {
+        foreach (var c in text)
+        {
+            if (char.IsSurrogate(c))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

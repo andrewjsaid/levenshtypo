@@ -1,14 +1,18 @@
 ﻿using System;
+using System.Linq;
+using System.Text;
 
 namespace Levenshtypo;
 
 internal class Distance0Levenshtomaton<TCaseSensitivity> : Levenshtomaton where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
 {
     private string _s;
+    private Rune[] _sRune;
 
     public Distance0Levenshtomaton(string s, LevenshtypoMetric metric) : base(s, 0)
     {
         _s = s;
+        _sRune = s.EnumerateRunes().ToArray();
         Metric = metric;
     }
 
@@ -30,29 +34,31 @@ internal class Distance0Levenshtomaton<TCaseSensitivity> : Levenshtomaton where 
         }
     }
 
-    private State StartSpecialized() => new State(_s, 0);
+    private State StartSpecialized() => new State(_sRune, 0);
 
     public override LevenshtomatonExecutionState Start() => LevenshtomatonExecutionState.FromStruct(StartSpecialized());
 
     private readonly struct State : ILevenshtomatonExecutionState<State>
     {
-        private readonly string _s;
+        private readonly Rune[] _sRune;
         private readonly int _sIndex;
 
-        internal State(string s, int sIndex)
+        internal State(Rune[] sRune, int sIndex)
         {
-            _s = s;
+            _sRune = sRune;
             _sIndex = sIndex;
         }
 
-        public bool MoveNext(char c, out State next)
+        public bool MoveNext(Rune c, out State next)
         {
-            if (_sIndex < _s.Length)
+            var sRune = _sRune;
+
+            if (_sIndex < sRune.Length)
             {
-                var sNext = _s[_sIndex];
+                var sNext = sRune[_sIndex];
                 if (default(TCaseSensitivity).Equals(sNext, c))
                 {
-                    next = new State(_s, _sIndex + 1);
+                    next = new State(sRune, _sIndex + 1);
                     return true;
                 }
             }
@@ -61,6 +67,6 @@ internal class Distance0Levenshtomaton<TCaseSensitivity> : Levenshtomaton where 
             return false;
         }
 
-        public bool IsFinal => _sIndex == _s.Length;
+        public bool IsFinal => _sIndex == _sRune.Length;
     }
 }

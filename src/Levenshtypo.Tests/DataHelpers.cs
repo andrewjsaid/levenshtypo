@@ -24,4 +24,11 @@ internal static class DataHelpers
 
         return lines;
     }
+
+    public static IReadOnlyList<string> InvalidStrings() => [
+        "a\ud801bc", // high surrogate without a low surrogate
+        "abc\ud801", // high surrogate at end - string was split incorrectly
+        "\udc00abc", // low surrogate at start - string was split incorrectly
+        "abc\udc00", // low surrogate without high surrogate
+        ];
 }

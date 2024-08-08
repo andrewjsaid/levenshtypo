@@ -1,10 +1,11 @@
-﻿namespace Levenshtypo.Samples;
+﻿using System.Text;
+
+namespace Levenshtypo.Samples;
 
 /// <summary>
 /// An example of the automaton feature being used
-/// with a custom trie. This may be due to limitations
-/// of the Levenshtrie itself - such as it being immutable
-/// or to fit in the automaton into an existing codebase.
+/// with a custom trie. For example it might be easier
+/// to integrate into an existing codebase.
 /// 
 /// This example demonstrates the faster development approach
 /// which includes boxing. For an advanced example see
@@ -36,7 +37,10 @@ public class CustomTrieExample
 
             foreach (var childNode in node.Children)
             {
-                if (automatonState.MoveNext(childNode.Key, out var nextState))
+                // Cast directly to rune because we only expect BMP unicode scalars
+                var rune = (Rune)childNode.Key;
+
+                if (automatonState.MoveNext(rune, out var nextState))
                 {
                     Visit(childNode, next[1..], nextState);
                 }

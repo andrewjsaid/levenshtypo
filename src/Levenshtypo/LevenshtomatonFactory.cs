@@ -38,12 +38,6 @@ public sealed class LevenshtomatonFactory
             throw new ArgumentOutOfRangeException(nameof(maxEditDistance));
         }
 
-        if (s.Any(char.IsSurrogate))
-        {
-            // The limitation is because I haven't had the time to implement otherwise.
-            throw new ArgumentException("Unable to construct a Levenshtomaton for this input.", nameof(s));
-        }
-
         if (maxEditDistance == 0)
         {
             if (ignoreCase)

@@ -1,3 +1,1 @@
 ﻿#nullable enable
-Levenshtypo.Levenshtrie<T>.Search(Levenshtypo.LevenshtomatonExecutionState! searcher) -> T[]!
-static Levenshtypo.LevenshtomatonExecutionState.FromStruct<TState>(TState state) -> Levenshtypo.LevenshtomatonExecutionState!

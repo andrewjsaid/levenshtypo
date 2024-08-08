@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 
 namespace Levenshtypo;
 
@@ -620,6 +621,7 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
     private readonly DfaState[] _states;
     private readonly DfaTransition[] _transitions;
     private readonly string _s;
+    private readonly Rune[] _sRune;
     private readonly int _maxEditDistance;
     private readonly int _startStateIndex;
 
@@ -634,6 +636,7 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
         _states = states;
         _transitions = transitions;
         _s = s;
+        _sRune = s.EnumerateRunes().ToArray();
         _maxEditDistance = maxEditDistance;
         _startStateIndex = startStateIndex;
         Metric = metric;
@@ -664,28 +667,28 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
             _sIndex = sIndex;
         }
 
-        public bool MoveNext(char c, out State next)
+        public bool MoveNext(Rune c, out State next)
         {
             var automaton = _automaton;
             Debug.Assert(_automaton != null);
 
-            var s = automaton._s;
+            var sRune = automaton._sRune;
             var sIndex = _sIndex;
             var states = _automaton._states;
             var maxEditDistance = automaton._maxEditDistance;
 
             var maxCharacteristicVectorLength = CalculateMaxCharacterizedVectorLength(maxEditDistance);
-            var characteristicVectorLength = Math.Min(maxCharacteristicVectorLength, s.Length - sIndex);
+            var characteristicVectorLength = Math.Min(maxCharacteristicVectorLength, sRune.Length - sIndex);
 
             var characteristicVector = 0u;
-            foreach (var sChar in s.AsSpan().Slice(sIndex, characteristicVectorLength))
+            foreach (var sChar in sRune.AsSpan().Slice(sIndex, characteristicVectorLength))
             {
                 characteristicVector = (characteristicVector << 1) | (default(TCaseSensitivity).Equals(sChar, c) ? 1u : 0u);
             }
 
             var state = states[_stateIndex];
             var transition = automaton._transitions[state.TransitionStartIndex + characteristicVector];
-            var nextCharacteristicVectorLength = Math.Min(maxCharacteristicVectorLength, s.Length - sIndex - transition.IndexOffset);
+            var nextCharacteristicVectorLength = Math.Min(maxCharacteristicVectorLength, sRune.Length - sIndex - transition.IndexOffset);
 
             if (transition.MatchingStateStartIndex != DfaTransition.NoMatchingState)
             {

@@ -1,3 +1,4 @@
+using System.Text;
 using Shouldly;
 
 namespace Levenshtypo.Tests;
@@ -56,7 +57,7 @@ public class LevenshtrieCustomTraversal
 
         public bool IsFinal => _numLeft == 0;
 
-        public bool MoveNext(char c, out OnlyGetNChars next)
+        public bool MoveNext(Rune c, out OnlyGetNChars next)
         {
             var nextNumLeft = _numLeft - 1;
             next = new(nextNumLeft);
@@ -77,7 +78,7 @@ public class LevenshtrieCustomTraversal
             _state2 = state2;
         }
 
-        public override bool MoveNext(char c, out LevenshtomatonExecutionState next)
+        public override bool MoveNext(Rune c, out LevenshtomatonExecutionState next)
         {
             if (_state1.MoveNext(c, out var nextState1) && _state2.MoveNext(c, out var nextState2))
             {
@@ -105,7 +106,7 @@ public class LevenshtrieCustomTraversal
             _state2 = state2;
         }
 
-        public override bool MoveNext(char c, out LevenshtomatonExecutionState next)
+        public override bool MoveNext(Rune c, out LevenshtomatonExecutionState next)
         {
             LevenshtomatonExecutionState? nextState1;
             LevenshtomatonExecutionState? nextState2;

@@ -15,6 +15,7 @@ public class LevenshteinDistanceTests
     [InlineData("abc", "a", 2)]
     [InlineData("abc", "ab", 1)]
     [InlineData("abc", "abc", 0)]
+    [InlineData("abc", "\ud83e\udd70bc", 1)]
 
     [InlineData("axx", "abc", 2)]
     [InlineData("abx", "abc", 1)]
@@ -35,6 +36,7 @@ public class LevenshteinDistanceTests
     [InlineData("abc", "A", 2)]
     [InlineData("abc", "AB", 1)]
     [InlineData("abc", "ABC", 0)]
+    [InlineData("abc", "\ud83e\udd70bc", 1)]
 
     [InlineData("axx", "ABC", 2)]
     [InlineData("abx", "ABC", 1)]
@@ -44,6 +46,7 @@ public class LevenshteinDistanceTests
         LevenshteinDistance.Levenshtein(b, a, ignoreCase: true).ShouldBe(distance);
         LevenshteinDistance.Calculate(a, b, ignoreCase: true, metric: LevenshtypoMetric.Levenshtein).ShouldBe(distance);
     }
+
     [Theory]
     [InlineData("a", "a", 0)]
     [InlineData("a", "A", 1)]
@@ -56,6 +59,7 @@ public class LevenshteinDistanceTests
     [InlineData("abc", "a", 2)]
     [InlineData("abc", "ab", 1)]
     [InlineData("abc", "abc", 0)]
+    [InlineData("abc", "\ud83e\udd70bc", 1)]
 
     [InlineData("axx", "abc", 2)]
     [InlineData("abx", "abc", 1)]
@@ -83,6 +87,7 @@ public class LevenshteinDistanceTests
     [InlineData("abc", "A", 2)]
     [InlineData("abc", "AB", 1)]
     [InlineData("abc", "ABC", 0)]
+    [InlineData("abc", "\ud83e\udd70bc", 1)]
 
     [InlineData("axx", "ABC", 2)]
     [InlineData("abx", "ABC", 1)]

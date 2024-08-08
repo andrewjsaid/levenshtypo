@@ -174,7 +174,7 @@ public class BooleanCombinationsExample
             _state2 = state2;
         }
 
-        public bool MoveNext(char c, out AndLevenshtomatonExecutionState next)
+        public bool MoveNext(Rune c, out AndLevenshtomatonExecutionState next)
         {
             if (_state1.MoveNext(c, out var nextState1) && _state2.MoveNext(c, out var nextState2))
             {
@@ -195,9 +195,7 @@ public class BooleanCombinationsExample
 
 ## Limitations
 
-- No lookup by UTF8 byte arrays.
-- No support for surrogate character pairs.
-- Only ordinal character comparison, whether case sensitive or insensitive.
+- No custom cultures (so far).
 - Maximum Levenshtein Distance of 3.
 
 ## Performance
@@ -221,17 +219,17 @@ AMD Ryzen 9 5950X, 1 CPU, 32 logical and 16 physical cores
 
 
 ```
-| Method                | Mean              | Error           | StdDev          | Gen0   | Allocated |
-|---------------------- |------------------:|----------------:|----------------:|-------:|----------:|
-| Distance0_Dictionary  |          9.007 ns |       0.0234 ns |       0.0195 ns |      - |         - |
-| Distance0_Levenshtypo |        322.926 ns |       1.5243 ns |       1.1901 ns | 0.0124 |     208 B |
-| Distance1_Levenshtypo |     22,519.695 ns |     232.5673 ns |     217.5436 ns |      - |     424 B |
-| Distance2_Levenshtypo |    295,440.729 ns |   1,586.4122 ns |   1,483.9309 ns |      - |    1832 B |
-| Distance3_Levenshtypo |  1,664,370.716 ns |  15,674.7869 ns |  14,662.2054 ns |      - |   17905 B |
-| Distance0_Naive       |    780,626.039 ns |   7,933.1235 ns |   7,032.5073 ns |      - |      89 B |
-| Distance1_Naive       | 61,204,417.460 ns | 615,593.6713 ns | 545,707.7552 ns |      - |     170 B |
-| Distance2_Naive       | 60,461,657.143 ns | 404,845.7522 ns | 358,885.2144 ns |      - |     690 B |
-| Distance3_Naive       | 62,736,083.333 ns | 658,735.0546 ns | 616,181.1787 ns |      - |    4356 B |
+| Method                | Mean              | Error             | StdDev            | Gen0   | Allocated |
+|---------------------- |------------------:|------------------:|------------------:|-------:|----------:|
+| Distance0_Dictionary  |          8.684 ns |         0.1101 ns |         0.0920 ns |      - |         - |
+| Distance0_Levenshtypo |        310.961 ns |         3.1021 ns |         2.5904 ns | 0.0124 |     208 B |
+| Distance1_Levenshtypo |     24,141.507 ns |       199.0559 ns |       186.1970 ns |      - |     424 B |
+| Distance2_Levenshtypo |    316,115.103 ns |     1,707.6972 ns |     1,426.0045 ns |      - |    1832 B |
+| Distance3_Levenshtypo |  1,793,227.135 ns |    15,364.1548 ns |    14,371.6399 ns |      - |   17905 B |
+| Distance0_Naive       |    854,065.388 ns |    16,691.1851 ns |    22,847.0826 ns |      - |      89 B |
+| Distance1_Naive       | 72,516,089.474 ns | 1,440,445.8946 ns | 2,484,698.3947 ns |      - |     193 B |
+| Distance2_Naive       | 67,178,545.833 ns | 1,311,669.0528 ns | 1,226,936.0458 ns |      - |     700 B |
+| Distance3_Naive       | 70,371,917.130 ns | 1,391,536.4780 ns | 1,950,739.7971 ns |      - |    4356 B |
 
 </details>
 
@@ -251,10 +249,10 @@ AMD Ryzen 9 5950X, 1 CPU, 32 logical and 16 physical cores
 
 
 ```
-| Method              | Mean          | Error        | StdDev       | Gen0      | Gen1      | Gen2      | Allocated    |
-|-------------------- |--------------:|-------------:|-------------:|----------:|----------:|----------:|-------------:|
-| English_Dictionary  |  32,273.94 μs |   639.336 μs | 1,169.062 μs |  812.5000 |  812.5000 |  812.5000 |  35524.24 KB |
-| English_Levenshtypo | 153,284.31 μs | 2,301.631 μs | 2,152.947 μs | 4000.0000 | 1000.0000 | 1000.0000 | 142181.21 KB |
+| Method              | Mean          | Error        | StdDev       | Gen0      | Gen1     | Gen2     | Allocated    |
+|-------------------- |--------------:|-------------:|-------------:|----------:|---------:|---------:|-------------:|
+| English_Dictionary  |  34,213.49 μs |   665.436 μs | 1,074.555 μs |  750.0000 | 750.0000 | 750.0000 |  35524.21 KB |
+| English_Levenshtypo | 139,977.62 μs | 1,479.846 μs | 1,384.249 μs | 4250.0000 | 750.0000 | 750.0000 | 168067.98 KB |
 
 </details>
 

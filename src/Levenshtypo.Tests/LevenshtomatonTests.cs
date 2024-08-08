@@ -1,4 +1,6 @@
+using System.Buffers;
 using System.Collections.Concurrent;
+using System.Text;
 using Shouldly;
 
 namespace Levenshtypo.Tests;
@@ -85,13 +87,14 @@ public class LevenshtomatonTests
 
     private static bool ExecuteDirect(LevenshtomatonExecutionState state, string word)
     {
-        for (int i = 0; i < word.Length; i++)
+        foreach (var rune in word.EnumerateRunes())
         {
-            if (!state.MoveNext(word[i], out state))
+            if (!state.MoveNext(rune, out state))
             {
                 return false;
             }
         }
+
         return state.IsFinal;
     }
 
@@ -99,13 +102,18 @@ public class LevenshtomatonTests
     {
         public bool ExecuteAutomaton<TState>(TState executionState) where TState : struct, ILevenshtomatonExecutionState<TState>
         {
-            for (int i = 0; i < word.Length; i++)
+            var wordSpan = word.AsSpan();
+            while (wordSpan.Length > 0)
             {
-                if (!executionState.MoveNext(word[i], out executionState))
+                Rune.DecodeFromUtf16(wordSpan, out var rune, out var charsConsumed);
+                wordSpan = wordSpan[charsConsumed..];
+
+                if (!executionState.MoveNext(rune, out executionState))
                 {
                     return false;
                 }
             }
+
             return executionState.IsFinal;
         }
     }

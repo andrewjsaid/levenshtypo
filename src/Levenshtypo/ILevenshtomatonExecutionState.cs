@@ -1,4 +1,6 @@
-﻿namespace Levenshtypo;
+﻿using System.Text;
+
+namespace Levenshtypo;
 
 /// <summary>
 /// Represents execution of an automaton.
@@ -17,7 +19,7 @@ public interface ILevenshtomatonExecutionState<TSelf> where TSelf : ILevenshtoma
     /// <param name="c">The character being consumed.</param>
     /// <param name="next">The next state of the automaton, after the character has been consumed.</param>
     /// <returns>Whether a next state was found.</returns>
-    bool MoveNext(char c, out TSelf next);
+    bool MoveNext(Rune c, out TSelf next);
 
     /// <summary>
     /// When true, the characters leading up to this state form text
@@ -42,7 +44,7 @@ public abstract class LevenshtomatonExecutionState : ILevenshtomatonExecutionSta
     /// <param name="c">The character being consumed.</param>
     /// <param name="next">The next state of the automaton, after the character has been consumed.</param>
     /// <returns>Whether a next state was found.</returns>
-    public abstract bool MoveNext(char c, out LevenshtomatonExecutionState next);
+    public abstract bool MoveNext(Rune c, out LevenshtomatonExecutionState next);
 
     /// <summary>
     /// When true, the characters leading up to this state form text
@@ -68,7 +70,7 @@ internal sealed class StructWrappedLevenshtomatonExecutionState<TState> : Levens
         _state = state;
     }
 
-    public override bool MoveNext(char c, out LevenshtomatonExecutionState next)
+    public override bool MoveNext(Rune c, out LevenshtomatonExecutionState next)
     {
         var result = _state.MoveNext(c, out var nextState);
         next = new StructWrappedLevenshtomatonExecutionState<TState>(nextState);

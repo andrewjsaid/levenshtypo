@@ -1,4 +1,6 @@
-﻿namespace Levenshtypo.Samples;
+﻿using System.Text;
+
+namespace Levenshtypo.Samples;
 
 /// <summary>
 /// An example where the user wants to find words in common with 2 others.
@@ -35,7 +37,7 @@ public class BooleanCombinationsExample
             _state2 = state2;
         }
 
-        public bool MoveNext(char c, out AndLevenshtomatonExecutionState next)
+        public bool MoveNext(Rune c, out AndLevenshtomatonExecutionState next)
         {
             if (_state1.MoveNext(c, out var nextState1) && _state2.MoveNext(c, out var nextState2))
             {
