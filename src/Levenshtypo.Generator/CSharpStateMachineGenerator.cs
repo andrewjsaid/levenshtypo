@@ -23,248 +23,161 @@ internal static class CSharpStateMachineGenerator
         var records = new List<TransitionRecord>();
 
         var groupMap = new Dictionary<int, int>();
-        int MapGroup(int index)
-        {
-            if (!groupMap.TryGetValue(index, out var result))
-            {
-                groupMap.Add(index, result = groupMap.Count);
-            }
-            return result;
-        }
-
-        var finalStates = new List<(int state, int vLen)>();
 
         foreach (var state in states)
         {
-            if (state.IsFinal)
+            if (!groupMap.ContainsKey(state.GroupId))
             {
-                finalStates.Add((MapGroup(state.GroupId), state.CharacteristicVectorLength));
-            }
-
-            var numTransitions = 1 << state.CharacteristicVectorLength;
-            var stateTransitions = transitions.AsSpan(state.TransitionStartIndex, numTransitions);
-
-            for (int characteristicVector = 0; characteristicVector < stateTransitions.Length; characteristicVector++)
-            {
-                var stateTransition = stateTransitions[characteristicVector];
-
-                records.Add(new TransitionRecord(
-                Distance: state.CharacteristicVectorLength,
-                FromState: MapGroup(state.GroupId),
-                Vector: (uint)characteristicVector,
-                ToState: stateTransition.MatchingStateStartIndex == -1 ? -1 : MapGroup(states[stateTransition.MatchingStateStartIndex].GroupId),
-                ReadOffset: stateTransition.IndexOffset));
+                groupMap.Add(state.GroupId, groupMap.Count);
             }
         }
-
 
         var sb = new StringBuilder();
         sb.AppendLine(
             $$"""
             private readonly struct State : ILevenshtomatonExecutionState<State>
             {
-              private readonly string _s;
-              private readonly int _sIndex;
-              private readonly int _state;
-
-              internal State(string s, int sIndex, int state)
-              {
-                _s = s;
-                _sIndex = sIndex;
-                _state = state;
-              }
-
-              public bool MoveNext(char c, out State next)
-              {
-                var s = _s;
-                var sIndex = _sIndex;
-                var state = _state;
-                
-                var d = s.Length - sIndex;
-                
-                int nextState = -1;
-                int offset = 0;
-
-                switch (d)
-                {
             """);
 
-        foreach (var gDistance in records.GroupBy(r => r.Distance).OrderBy(g => g.Key))
+        for (int i = 0; i <= maxDistance; i++)
         {
-            if (gDistance.All(x => x.ToState == -1))
-                continue;
+            var entriesPerState = 1 << i;
+            var transitionPayload = new short[groupMap.Count * entriesPerState];
+            Array.Fill(transitionPayload, (short)-1);
+            var finalPayload = new bool[groupMap.Count];
 
-            sb.AppendLine(
-                $$"""
-                      {{(gDistance.Key < maxDistance ? "case " + gDistance.Key.ToString() : "default")}}:
-                      {
-                """);
-
-            if (gDistance.Key > 0)
+            foreach (var state in states)
             {
-                sb.AppendLine(
-                    """
-                            var vector = 0
-                    """);
-
-                for (int d = 0; d < gDistance.Key; d++)
+                if (state.CharacteristicVectorLength == i)
                 {
-                    sb.AppendLine(
-                        $$"""
-                                  | ((default(TCaseSensitivity).Equals(c, s[sIndex + {{d}}]) ? 1 : 0) << {{gDistance.Key - d - 1}})
-                        """);
-                }
-
-                sb.AppendLine(
-                    "          ;");
-            }
-
-            sb.AppendLine(
-                $$"""
-                        switch (state)
-                        {
-                """);
-
-            foreach (var gState in gDistance.GroupBy(r => r.FromState).OrderBy(g => g.Key))
-            {
-                if (gState.All(x => x.ToState == -1))
-                    continue;
-
-                sb.AppendLine(
-                    $$"""
-                              case {{gState.Key}}:
-                              {
-                    """);
-
-                if (gDistance.Key == 0)
-                {
-                    if (gState.Count() > 1)
+                    if (state.IsFinal)
                     {
-                        throw new InvalidOperationException("At distance 0 there should be no switching on vector");
+                        finalPayload[groupMap[state.GroupId]] = true;
                     }
 
-                    if (gState.Single().ReadOffset != 0)
+                    var stateTransitions = transitions.AsSpan(state.TransitionStartIndex, entriesPerState);
+                    for (int v = 0; v < stateTransitions.Length; v++)
                     {
-                        throw new InvalidOperationException("At distance 0 you shouldn't be reading further");
-                    }
-
-                    sb.AppendLine(
-                        $$"""
-                                    nextState = {{gState.Single().ToState}};
-                        """);
-                }
-                else
-                {
-
-                    sb.AppendLine(
-                        $$"""
-                                    switch (vector)
-                                    {
-                        """);
-
-                    foreach (var byVector in gState)
-                    {
-                        if (byVector.ToState != -1)
+                        var transition = stateTransitions[v];
+                        if (transition.MatchingStateStartIndex > -1)
                         {
-                            sb.AppendLine(
-                                $$"""
-                                              case {{byVector.Vector}}:
-                                              {
-                                                nextState = {{byVector.ToState}};
-                                                offset = {{byVector.ReadOffset}};
-                                                break;
-                                              }
-                                """);
+                            var offset = (ushort)transition.IndexOffset;
+                            var nextState = (ushort)groupMap[states[transition.MatchingStateStartIndex].GroupId];
+
+                            transitionPayload[groupMap[state.GroupId] * entriesPerState + v] = (short)((offset << 8) | nextState);
                         }
                     }
-
-                    sb.AppendLine(
-                        $$"""
-                                    }
-                        """);
                 }
-
-                sb.AppendLine(
-                    $$"""
-                                break;
-                              }
-                    """);
             }
+
+            var encodedTransitionPayload = string.Join(", ", transitionPayload.Select(t => t == -1 ? "-1" : ("0x" + t.ToString("X2"))));
+            var encodedFinalsPayload = string.Join(", ", finalPayload.Select(b => b.ToString().ToLower()));
 
             sb.AppendLine(
                 $$"""
-                        }
-                  
-                        break;
-                      }
+                    private static ReadOnlySpan<short> TransitionsD{{i}} => [{{encodedTransitionPayload}}];
+                    private static ReadOnlySpan<bool> FinalsD{{i}} => [{{encodedFinalsPayload}}];
                 """);
         }
-
-        sb.AppendLine(
-            """
-                }
-
-                if (nextState >= 0)
-                {
-                    next = new State(_s, sIndex + offset, nextState);
-                    return true;
-                }
-                
-                next = default;
-                return false;
-              }
-
-              public bool IsFinal
-              {
-                get
-                {
-            """);
-
 
         sb.AppendLine(
             $$"""
-                var state = _state;
-                var d = _s.Length - _sIndex;
-                
-                switch (state)
+
+                private readonly Rune[] _sRune;
+                private readonly int _sIndex;
+                private readonly int _state;
+  
+                private State(Rune[] sRune, int state, int sIndex)
                 {
+                    _sRune = sRune;
+                    _state = state;
+                    _sIndex = sIndex;
+                }
+
+                internal static State Start(Rune[] sRune) => new State(sRune, 0, 0);
+  
+                public bool MoveNext(Rune c, out State next)
+                {
+                    var s = _sRune;
+                    var sIndex = _sIndex;
+
+                    short encodedNext;
+                    
+                    switch (s.Length - sIndex)
+                    {
             """);
 
-        foreach (var gState in finalStates.GroupBy(x => x.state))
+        for (int dKey = 0; dKey <= maxDistance; dKey++)
         {
             sb.AppendLine(
                 $$"""
-                      case {{gState.Key}}:
-                      {
-                        switch (d)
-                        {
+                            {{(dKey < maxDistance ? "case " + dKey.ToString() : "default")}}:
+                            {
                 """);
 
-            foreach (var (_, d) in gState)
+            var entriesPerState = 1 << dKey;
+
+            sb.AppendLine(
+                $$"""
+                                var vector = 0
+                """);
+
+            for (int d = 1; d <= dKey; d++)
             {
                 sb.AppendLine(
                     $$"""
-                              case {{d}}:
+                                        | (default(TCaseSensitivity).Equals(c, s[sIndex + {{d - 1}}]) ? {{1 << (dKey - d)}} : 0)
                     """);
             }
 
             sb.AppendLine(
                 $$"""
-                            return true;
-                        }
+                                    ;
+                                
+                                encodedNext = TransitionsD{{dKey}}[_state * {{entriesPerState}} + vector];
 
-                        break;
-                      }
+                                break;
+                            }
                 """);
         }
 
         sb.AppendLine(
             """
-                  }
-
-                  return false;
+                    }
+                                        
+                    if (encodedNext >= 0)
+                    {
+                        // format:
+                        // top bit reserved for negative sign
+                        // next 7 bits reserved for offset (max = 64 is more than enough)
+                        // next 8 bits is the nextState
+                        int nextState = encodedNext & 0xFF;
+                        int offset = (encodedNext >> 8) & 0x3F;
+                        next = new State(_sRune, nextState, sIndex + offset);
+                        return true;
+                    }
+                    
+                    next = default;
+                    return false;
                 }
-              }
+                    
+                public bool IsFinal => 
+                    (_sRune.Length - _sIndex) switch
+                    {
+            """);
+
+        for (int dKey = 0; dKey <= maxDistance; dKey++)
+        {
+            var key = dKey == maxDistance ? "_" : dKey.ToString();
+            sb.AppendLine(
+                $$"""
+                            {{key}} => FinalsD{{dKey}}[_state],
+                """);
+        }
+
+        sb.AppendLine(
+            """
+                    };
             }
             """);
 

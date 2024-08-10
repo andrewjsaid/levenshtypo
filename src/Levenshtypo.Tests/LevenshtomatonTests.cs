@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Text;
 using Shouldly;
 
@@ -19,11 +20,33 @@ public class LevenshtomatonTests
             ParameterizedLevenshtomaton.CreateTemplate(maxEditDistance: 3, metric: m)
         ]);
 
-        return [..templates.Select(t => t.Instantiate(word, ignoreCase)),
-            ignoreCase
+        var results = new List<Levenshtomaton>();
+
+        results.AddRange(templates.Select(t => t.Instantiate(word, ignoreCase)));
+
+        results.Add(ignoreCase
                 ? new Distance0Levenshtomaton<CaseInsensitive>(word, metric)
-                : new Distance0Levenshtomaton<CaseSensitive>(word, metric)
-        ];
+                : new Distance0Levenshtomaton<CaseSensitive>(word, metric));
+
+        results.Add((ignoreCase, metric) switch
+        {
+            (false, LevenshtypoMetric.Levenshtein) => new Distance1LevenshteinLevenshtomaton<CaseSensitive>(word),
+            (true, LevenshtypoMetric.Levenshtein) => new Distance1LevenshteinLevenshtomaton<CaseSensitive>(word),
+            (false, LevenshtypoMetric.RestrictedEdit) => new Distance1RestrictedEditLevenshtomaton<CaseSensitive>(word),
+            (true, LevenshtypoMetric.RestrictedEdit) => new Distance1RestrictedEditLevenshtomaton<CaseSensitive>(word),
+            _ => throw new UnreachableException()
+        });
+
+        results.Add((ignoreCase, metric) switch
+        {
+            (false, LevenshtypoMetric.Levenshtein) => new Distance2LevenshteinLevenshtomaton<CaseSensitive>(word),
+            (true, LevenshtypoMetric.Levenshtein) => new Distance2LevenshteinLevenshtomaton<CaseSensitive>(word),
+            (false, LevenshtypoMetric.RestrictedEdit) => new Distance2RestrictedEditLevenshtomaton<CaseSensitive>(word),
+            (true, LevenshtypoMetric.RestrictedEdit) => new Distance2RestrictedEditLevenshtomaton<CaseSensitive>(word),
+            _ => throw new UnreachableException()
+        });
+
+        return results.ToArray();
     }
 
     [Theory]
@@ -44,7 +67,7 @@ public class LevenshtomatonTests
             {
                 foreach (var automaton in automata)
                 {
-                    Matches(automaton, testWord).ShouldBe(distance <= automaton.MaxEditDistance);
+                    Matches(automaton, testWord).ShouldBe(distance <= automaton.MaxEditDistance, $"Distance: {automaton.MaxEditDistance}, Type: {automaton}, TestWord: {testWord}");
                 }
             }
         }
@@ -67,8 +90,25 @@ public class LevenshtomatonTests
             foreach (var automaton in caseSensitiveAutomata.Union(caseInsensitiveAutomata))
             {
                 Matches(automaton, word).ShouldBeTrue();
-                Matches(automaton, word.ToUpperInvariant()).ShouldBe(automaton.IgnoreCase);
+                Matches(automaton, word.ToUpperInvariant()).ShouldBe(automaton.IgnoreCase, $"Distance: {automaton.MaxEditDistance}, Type: {automaton}");
             }
+        }
+    }
+
+    [Theory]
+    [InlineData("a", "a", LevenshtypoMetric.Levenshtein, 0)]
+    [InlineData("", "a", LevenshtypoMetric.Levenshtein, 1)]
+    [InlineData("a", "", LevenshtypoMetric.Levenshtein, 1)]
+    [InlineData("", "aa", LevenshtypoMetric.Levenshtein, 2)]
+    [InlineData("aa", "", LevenshtypoMetric.Levenshtein, 2)]
+    [InlineData("", "aaa", LevenshtypoMetric.Levenshtein, 3)]
+    [InlineData("aaa", "", LevenshtypoMetric.Levenshtein, 3)]
+    public void SpecificTests(string automatonWord, string queryWord, LevenshtypoMetric metric, int distance)
+    {
+        var automata = Construct(automatonWord, ignoreCase: false, metric: metric);
+        foreach (var automaton in automata)
+        {
+            Matches(automaton, queryWord).ShouldBe(distance <= automaton.MaxEditDistance, $"Distance: {automaton.MaxEditDistance}, Type: {automaton}");
         }
     }
 

@@ -646,7 +646,7 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
 
     public override T Execute<T>(ILevenshtomatonExecutor<T> executor) => executor.ExecuteAutomaton(StartSpecialized());
 
-    private State StartSpecialized() => new State(this, _startStateIndex, 0);
+    private State StartSpecialized() => State.Start(this, _startStateIndex);
 
     public override LevenshtomatonExecutionState Start() => LevenshtomatonExecutionState.FromStruct(StartSpecialized());
 
@@ -660,11 +660,17 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
         private readonly int _stateIndex;
         private readonly int _sIndex;
 
-        internal State(ParameterizedLevenshtomaton<TCaseSensitivity> automaton, int stateIndex, int sIndex)
+        private State(ParameterizedLevenshtomaton<TCaseSensitivity> automaton, int stateIndex, int sIndex, bool isFinal)
         {
             _automaton = automaton;
             _stateIndex = stateIndex;
             _sIndex = sIndex;
+            IsFinal = isFinal;
+        }
+
+        internal static State Start(ParameterizedLevenshtomaton<TCaseSensitivity> automaton, int stateIndex)
+        {
+            return new State(automaton, stateIndex, 0, automaton._states[stateIndex].IsFinal);
         }
 
         public bool MoveNext(Rune c, out State next)
@@ -695,14 +701,15 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
                 int nextStateIndex = transition.MatchingStateStartIndex;
                 int groupId = states[transition.MatchingStateStartIndex].GroupId;
 
+                var nextState = states[nextStateIndex];
                 while (
-                    states[nextStateIndex].CharacteristicVectorLength != nextCharacteristicVectorLength
-                    && states[nextStateIndex].GroupId == groupId)
+                    (nextState = states[nextStateIndex]).GroupId == groupId
+                    && nextState.CharacteristicVectorLength != nextCharacteristicVectorLength)
                 {
                     nextStateIndex++;
                 }
 
-                next = new State(automaton, nextStateIndex, _sIndex + transition.IndexOffset);
+                next = new State(automaton, nextStateIndex, _sIndex + transition.IndexOffset, nextState.IsFinal);
                 return true;
             }
 
@@ -710,6 +717,6 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
             return false;
         }
 
-        public bool IsFinal => _automaton._states[_stateIndex].IsFinal;
+        public bool IsFinal { get; }
     }
 }

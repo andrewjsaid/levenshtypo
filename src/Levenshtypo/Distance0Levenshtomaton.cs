@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Levenshtypo;
 
-internal class Distance0Levenshtomaton<TCaseSensitivity> : Levenshtomaton where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
+internal sealed class Distance0Levenshtomaton<TCaseSensitivity> : Levenshtomaton where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
 {
     private string _s;
     private Rune[] _sRune;
