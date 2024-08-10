@@ -352,7 +352,7 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
 
             bool IsUseless(NfaState a, NfaState b)
             {
-                if(a.Error <= b.Error)
+                if (a.Error <= b.Error)
                 {
                     return false;
                 }
@@ -688,7 +688,11 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
             var characteristicVector = 0u;
             foreach (var sChar in sRune.AsSpan().Slice(sIndex, characteristicVectorLength))
             {
-                characteristicVector = (characteristicVector << 1) | (default(TCaseSensitivity).Equals(sChar, c) ? 1u : 0u);
+                characteristicVector <<= 1;
+                if (default(TCaseSensitivity).Equals(sChar, c))
+                {
+                    characteristicVector |= 1;
+                }
             }
 
             var state = states[_stateIndex];

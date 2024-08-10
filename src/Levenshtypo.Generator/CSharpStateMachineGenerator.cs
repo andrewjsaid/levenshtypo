@@ -32,29 +32,30 @@ internal static class CSharpStateMachineGenerator
             }
         }
 
+        if (groupMap.Count > 64)
+        {
+            throw new NotSupportedException("Finals uses a ulong to represent final state");
+        }
+
         var sb = new StringBuilder();
         sb.AppendLine(
             $$"""
             private readonly struct State : ILevenshtomatonExecutionState<State>
             {
+
+                private static ReadOnlySpan<short> Transitions => [
             """);
 
-        for (int i = 0; i <= maxDistance; i++)
+        for (int dKey = 0; dKey <= maxDistance; dKey++)
         {
-            var entriesPerState = 1 << i;
+            var entriesPerState = 1 << dKey;
             var transitionPayload = new short[groupMap.Count * entriesPerState];
             Array.Fill(transitionPayload, (short)-1);
-            var finalPayload = new bool[groupMap.Count];
 
             foreach (var state in states)
             {
-                if (state.CharacteristicVectorLength == i)
+                if (state.CharacteristicVectorLength == dKey)
                 {
-                    if (state.IsFinal)
-                    {
-                        finalPayload[groupMap[state.GroupId]] = true;
-                    }
-
                     var stateTransitions = transitions.AsSpan(state.TransitionStartIndex, entriesPerState);
                     for (int v = 0; v < stateTransitions.Length; v++)
                     {
@@ -71,14 +72,13 @@ internal static class CSharpStateMachineGenerator
             }
 
             var encodedTransitionPayload = string.Join(", ", transitionPayload.Select(t => t == -1 ? "-1" : ("0x" + t.ToString("X2"))));
-            var encodedFinalsPayload = string.Join(", ", finalPayload.Select(b => b.ToString().ToLower()));
-
-            sb.AppendLine(
-                $$"""
-                    private static ReadOnlySpan<short> TransitionsD{{i}} => [{{encodedTransitionPayload}}];
-                    private static ReadOnlySpan<bool> FinalsD{{i}} => [{{encodedFinalsPayload}}];
-                """);
+            sb.AppendLine("        " + encodedTransitionPayload + ",");
         }
+
+        sb.AppendLine(
+            """
+                ];
+            """);
 
         sb.AppendLine(
             $$"""
@@ -98,53 +98,26 @@ internal static class CSharpStateMachineGenerator
   
                 public bool MoveNext(Rune c, out State next)
                 {
-                    var s = _sRune;
+                    var sRune = _sRune;
                     var sIndex = _sIndex;
-
-                    short encodedNext;
-                    
-                    switch (s.Length - sIndex)
-                    {
-            """);
-
-        for (int dKey = 0; dKey <= maxDistance; dKey++)
-        {
-            sb.AppendLine(
-                $$"""
-                            {{(dKey < maxDistance ? "case " + dKey.ToString() : "default")}}:
-                            {
-                """);
-
-            var entriesPerState = 1 << dKey;
-
-            sb.AppendLine(
-                $$"""
-                                var vector = 0
-                """);
-
-            for (int d = 1; d <= dKey; d++)
-            {
-                sb.AppendLine(
-                    $$"""
-                                        | (default(TCaseSensitivity).Equals(c, s[sIndex + {{d - 1}}]) ? {{1 << (dKey - d)}} : 0)
-                    """);
-            }
-
-            sb.AppendLine(
-                $$"""
-                                    ;
-                                
-                                encodedNext = TransitionsD{{dKey}}[_state * {{entriesPerState}} + vector];
-
-                                break;
-                            }
-                """);
-        }
-
-        sb.AppendLine(
-            """
-                    }
                                         
+                    var vectorLength = Math.Min({{maxDistance}}, sRune.Length - sIndex);
+                    
+                    var vector = 0;
+                    foreach (var sChar in sRune.AsSpan().Slice(sIndex, vectorLength))
+                    {
+                        vector <<= 1;
+                        if (default(TCaseSensitivity).Equals(sChar, c))
+                        {
+                            vector |= 1;
+                        }
+                    }
+
+                    var dStart = {{groupMap.Count}} * ((1 << vectorLength) - 1);
+                    var dOffset = _state * (1 << vectorLength) + vector;
+
+                    var encodedNext = Transitions[dStart + dOffset];
+                    
                     if (encodedNext >= 0)
                     {
                         // format:
@@ -162,22 +135,35 @@ internal static class CSharpStateMachineGenerator
                 }
                     
                 public bool IsFinal => 
-                    (_sRune.Length - _sIndex) switch
+                    0 != ((1ul << _state) & (_sRune.Length - _sIndex) switch
                     {
             """);
 
         for (int dKey = 0; dKey <= maxDistance; dKey++)
         {
             var key = dKey == maxDistance ? "_" : dKey.ToString();
+
+            ulong bitVector = 0;
+            foreach (var state in states)
+            {
+                if (state.CharacteristicVectorLength == dKey)
+                {
+                    if (state.IsFinal)
+                    {
+                        bitVector |= 1ul << groupMap[state.GroupId];
+                    }
+                }
+            }
+
             sb.AppendLine(
                 $$"""
-                            {{key}} => FinalsD{{dKey}}[_state],
+                            {{key}} => 0x{{bitVector.ToString("X2")}}ul,
                 """);
         }
 
         sb.AppendLine(
             """
-                    };
+                    });
             }
             """);
 

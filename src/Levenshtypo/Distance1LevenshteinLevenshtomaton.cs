@@ -28,16 +28,16 @@ internal class Distance1LevenshteinLevenshtomaton<TCaseSensitivity> : Levenshtom
     private State StartSpecialized() => State.Start(_sRune);
 
     public override LevenshtomatonExecutionState Start() => LevenshtomatonExecutionState.FromStruct(StartSpecialized());
+
     private readonly struct State : ILevenshtomatonExecutionState<State>
     {
-        private static ReadOnlySpan<short> TransitionsD0 => [0x02, -1, -1, -1, -1];
-        private static ReadOnlySpan<bool> FinalsD0 => [true, false, true, false, false];
-        private static ReadOnlySpan<short> TransitionsD1 => [0x01, 0x100, -1, 0x102, -1, 0x102, -1, -1, -1, -1];
-        private static ReadOnlySpan<bool> FinalsD1 => [true, true, false, false, false];
-        private static ReadOnlySpan<short> TransitionsD2 => [0x01, 0x03, 0x100, 0x100, -1, 0x202, 0x102, 0x101, -1, -1, 0x102, 0x102, -1, 0x202, 0x102, 0x101, -1, -1, 0x102, 0x102];
-        private static ReadOnlySpan<bool> FinalsD2 => [false, false, false, true, true];
-        private static ReadOnlySpan<short> TransitionsD3 => [0x01, 0x01, 0x03, 0x03, 0x100, 0x100, 0x100, 0x100, -1, -1, 0x202, 0x202, 0x102, 0x102, 0x101, 0x101, -1, -1, -1, -1, 0x102, 0x102, 0x102, 0x102, -1, 0x302, 0x202, 0x201, 0x102, 0x104, 0x101, 0x103, -1, 0x302, -1, 0x302, 0x102, 0x104, 0x102, 0x104];
-        private static ReadOnlySpan<bool> FinalsD3 => [false, false, false, false, false];
+
+        private static ReadOnlySpan<short> Transitions => [
+            0x02, -1, -1, -1, -1,
+            0x01, 0x100, -1, 0x102, -1, 0x102, -1, -1, -1, -1,
+            0x01, 0x03, 0x100, 0x100, -1, 0x202, 0x102, 0x101, -1, -1, 0x102, 0x102, -1, 0x202, 0x102, 0x101, -1, -1, 0x102, 0x102,
+            0x01, 0x01, 0x03, 0x03, 0x100, 0x100, 0x100, 0x100, -1, -1, 0x202, 0x202, 0x102, 0x102, 0x101, 0x101, -1, -1, -1, -1, 0x102, 0x102, 0x102, 0x102, -1, 0x302, 0x202, 0x201, 0x102, 0x104, 0x101, 0x103, -1, 0x302, -1, 0x302, 0x102, 0x104, 0x102, 0x104,
+        ];
 
         private readonly Rune[] _sRune;
         private readonly int _sIndex;
@@ -54,56 +54,25 @@ internal class Distance1LevenshteinLevenshtomaton<TCaseSensitivity> : Levenshtom
 
         public bool MoveNext(Rune c, out State next)
         {
-            var s = _sRune;
+            var sRune = _sRune;
             var sIndex = _sIndex;
 
-            short encodedNext;
+            var vectorLength = Math.Min(3, sRune.Length - sIndex);
 
-            switch (s.Length - sIndex)
+            var vector = 0;
+            foreach (var sChar in sRune.AsSpan().Slice(sIndex, vectorLength))
             {
-                case 0:
-                    {
-                        var vector = 0
-                            ;
-
-                        encodedNext = TransitionsD0[_state * 1 + vector];
-
-                        break;
-                    }
-                case 1:
-                    {
-                        var vector = 0
-                            | (default(TCaseSensitivity).Equals(c, s[sIndex + 0]) ? 1 : 0)
-                            ;
-
-                        encodedNext = TransitionsD1[_state * 2 + vector];
-
-                        break;
-                    }
-                case 2:
-                    {
-                        var vector = 0
-                            | (default(TCaseSensitivity).Equals(c, s[sIndex + 0]) ? 2 : 0)
-                            | (default(TCaseSensitivity).Equals(c, s[sIndex + 1]) ? 1 : 0)
-                            ;
-
-                        encodedNext = TransitionsD2[_state * 4 + vector];
-
-                        break;
-                    }
-                default:
-                    {
-                        var vector = 0
-                            | (default(TCaseSensitivity).Equals(c, s[sIndex + 0]) ? 4 : 0)
-                            | (default(TCaseSensitivity).Equals(c, s[sIndex + 1]) ? 2 : 0)
-                            | (default(TCaseSensitivity).Equals(c, s[sIndex + 2]) ? 1 : 0)
-                            ;
-
-                        encodedNext = TransitionsD3[_state * 8 + vector];
-
-                        break;
-                    }
+                vector <<= 1;
+                if (default(TCaseSensitivity).Equals(sChar, c))
+                {
+                    vector |= 1;
+                }
             }
+
+            var dStart = 5 * ((1 << vectorLength) - 1);
+            var dOffset = _state * (1 << vectorLength) + vector;
+
+            var encodedNext = Transitions[dStart + dOffset];
 
             if (encodedNext >= 0)
             {
@@ -122,13 +91,13 @@ internal class Distance1LevenshteinLevenshtomaton<TCaseSensitivity> : Levenshtom
         }
 
         public bool IsFinal =>
-            (_sRune.Length - _sIndex) switch
+            0 != ((1ul << _state) & (_sRune.Length - _sIndex) switch
             {
-                0 => FinalsD0[_state],
-                1 => FinalsD1[_state],
-                2 => FinalsD2[_state],
-                _ => FinalsD3[_state],
-            };
+                0 => 0x05ul,
+                1 => 0x03ul,
+                2 => 0x18ul,
+                _ => 0x00ul,
+            });
     }
 
 }
