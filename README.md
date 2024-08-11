@@ -217,19 +217,19 @@ AMD Ryzen 9 5950X, 1 CPU, 32 logical and 16 physical cores
   [Host]     : .NET 8.0.6 (8.0.624.26715), X64 RyuJIT AVX2
   DefaultJob : .NET 8.0.6 (8.0.624.26715), X64 RyuJIT AVX2
 
-
+  
 ```
 | Method                | Mean              | Error             | StdDev            | Gen0   | Allocated |
 |---------------------- |------------------:|------------------:|------------------:|-------:|----------:|
-| Distance0_Dictionary  |          8.684 ns |         0.1101 ns |         0.0920 ns |      - |         - |
-| Distance0_Levenshtypo |        310.961 ns |         3.1021 ns |         2.5904 ns | 0.0124 |     208 B |
-| Distance1_Levenshtypo |     24,141.507 ns |       199.0559 ns |       186.1970 ns |      - |     424 B |
-| Distance2_Levenshtypo |    316,115.103 ns |     1,707.6972 ns |     1,426.0045 ns |      - |    1832 B |
-| Distance3_Levenshtypo |  1,793,227.135 ns |    15,364.1548 ns |    14,371.6399 ns |      - |   17905 B |
-| Distance0_Naive       |    854,065.388 ns |    16,691.1851 ns |    22,847.0826 ns |      - |      89 B |
-| Distance1_Naive       | 72,516,089.474 ns | 1,440,445.8946 ns | 2,484,698.3947 ns |      - |     193 B |
-| Distance2_Naive       | 67,178,545.833 ns | 1,311,669.0528 ns | 1,226,936.0458 ns |      - |     700 B |
-| Distance3_Naive       | 70,371,917.130 ns | 1,391,536.4780 ns | 1,950,739.7971 ns |      - |    4356 B |
+| Distance0_Dictionary  |          8.548 ns |         0.0096 ns |         0.0081 ns |      - |         - |
+| Distance0_Levenshtypo |        331.396 ns |         1.0820 ns |         0.9035 ns | 0.0124 |     208 B |
+| Distance1_Levenshtypo |     18,655.543 ns |       176.4438 ns |       156.4128 ns |      - |     424 B |
+| Distance2_Levenshtypo |    260,006.508 ns |       952.2781 ns |       844.1697 ns |      - |    1832 B |
+| Distance3_Levenshtypo |  1,518,877.956 ns |    25,025.3556 ns |    23,408.7332 ns |      - |   17905 B |
+| Distance0_Naive       |    805,520.354 ns |    15,697.4007 ns |    13,915.3369 ns |      - |      89 B |
+| Distance1_Naive       | 68,290,143.333 ns | 1,318,565.4424 ns | 1,233,386.9329 ns |      - |     180 B |
+| Distance2_Naive       | 71,591,125.123 ns | 1,408,712.7964 ns | 2,064,872.9517 ns |      - |     713 B |
+| Distance3_Naive       | 70,418,511.111 ns | 1,378,967.7153 ns | 1,933,120.1471 ns |      - |    4356 B |
 
 </details>
 

@@ -686,7 +686,7 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
             var characteristicVectorLength = Math.Min(maxCharacteristicVectorLength, sRune.Length - sIndex);
 
             var characteristicVector = 0u;
-            foreach (var sChar in sRune.AsSpan().Slice(sIndex, characteristicVectorLength))
+            foreach (var sChar in sRune.AsSpan(sIndex, characteristicVectorLength))
             {
                 characteristicVector <<= 1;
                 if (default(TCaseSensitivity).Equals(sChar, c))

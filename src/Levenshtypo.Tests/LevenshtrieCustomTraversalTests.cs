@@ -3,7 +3,7 @@ using Shouldly;
 
 namespace Levenshtypo.Tests;
 
-public class LevenshtrieCustomTraversal
+public class LevenshtrieCustomTraversalTests
 {
     [Fact]
     public void SearchForTwoCharacters()
