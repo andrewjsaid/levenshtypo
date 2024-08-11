@@ -106,6 +106,16 @@ public class LevenshtrieTryGetValueTests
     }
 
     [Fact]
+    public void TryGetValue_CaseSensitivity_2()
+    {
+        string[] entries = ["abcde1", "AbCdE2"];
+        var t = Levenshtrie<string>.Create(entries.Select(e => new KeyValuePair<string, string>(e, e)), ignoreCase: true);
+
+        t.TryGetValue("abcde2", out var result).ShouldBeTrue();
+        result.ShouldBe("AbCdE2");
+    }
+
+    [Fact]
     public void Search_CaseSensitivity()
     {
         var entries = Enumerable.Range(1, 100).Select(e => new KeyValuePair<string, int>(Guid.NewGuid().ToString().ToLowerInvariant(), e)).ToArray();
