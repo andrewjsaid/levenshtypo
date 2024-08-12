@@ -203,7 +203,7 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
             for (int characteristicVectorLength = maxCharacteristicVectorLength; characteristicVectorLength >= minCharacteristicVectorLength; characteristicVectorLength--)
             {
                 states.Add(new DfaState());
-                seen.Add(multiState);
+                seen.Add(multiState); // Yes this is intentionally here
             }
 
             // Add 1 state for each "distance"
@@ -263,9 +263,9 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
                 {
 #if DEBUG
                     Name = $"{name} [d={characteristicVectorLength}]",
-#endif
                     GroupId = dfaStartIdx,
-                    CharacteristicVectorLength = characteristicVectorLength,
+#endif
+                    CharacteristicVectorLength = (short)characteristicVectorLength,
                     TransitionStartIndex = transitionStartIndex,
                     FinalErrorNegated = finalErrorNegated,
                     MinimumError = minimumError,
@@ -566,17 +566,14 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
             var characteristicVectorLength = CalculateMaxCharacterizedVectorLength(_maxEditDistance);
             var truncatedCharacteristicVectorLength = Math.Min(characteristicVectorLength, sLength);
 
-            var groupId = _states[0].GroupId;
-            int i = 0;
+            var numStartStates = characteristicVectorLength + 1;
 
-            while (_states[i].CharacteristicVectorLength != truncatedCharacteristicVectorLength && _states[i + 1].GroupId == groupId)
+            for (int i = 0; i < numStartStates; i++)
             {
-                i++;
-            }
-
-            if (_states[i].CharacteristicVectorLength == truncatedCharacteristicVectorLength)
-            {
-                return i;
+                if (_states[i].CharacteristicVectorLength == truncatedCharacteristicVectorLength)
+                {
+                    return i;
+                }
             }
 
             throw new InvalidOperationException("Unable to find a starting state.");
@@ -610,9 +607,9 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
     {
 #if DEBUG
         public string Name;
+        public int GroupId;
 #endif
-        public int GroupId; // Used to avoid infinite loop
-        public int CharacteristicVectorLength;
+        public short CharacteristicVectorLength;
         public byte FinalErrorNegated; // If we are in the final state, this is the error. Invert the bits for the real value
         public byte MinimumError; // The minimum error we can reach from this state.
         public int TransitionStartIndex;
@@ -720,8 +717,10 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
             {
                 int nextStateIndex = transition.MatchingStateStartIndex + (characteristicVectorLength - nextCharacteristicVectorLength);
 
+#if DEBUG
                 Debug.Assert(states[nextStateIndex].GroupId == states[transition.MatchingStateStartIndex].GroupId);
                 Debug.Assert(states[nextStateIndex].CharacteristicVectorLength == nextCharacteristicVectorLength);
+#endif
 
                 var nextFinalError = states[nextStateIndex].FinalErrorNegated;
 

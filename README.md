@@ -44,9 +44,7 @@ public class TypoSuggestionExample
 
     public TypoSuggestionExample(IEnumerable<string> words)
     {
-        _trie = Levenshtrie<string>.Create(
-            words.Select(w => new KeyValuePair<string, string>(w, w)),
-            ignoreCase: true);
+        _trie = Levenshtrie.CreateStrings(words, ignoreCase: true);
     }
 
     public string[] GetSimilarWords(string word)
@@ -72,24 +70,15 @@ public class BlacklistDetectionExample
 
     public BlacklistDetectionExample(IEnumerable<string> blacklist)
     {
-        _trie = Levenshtrie<string>.Create(
-            blacklist.Select(w => new KeyValuePair<string, string>(w, w)),
-            ignoreCase: true);
+        _trie = Levenshtrie.CreateStrings(blacklist, ignoreCase: true);
     }
 
     public bool IsBlacklisted(string word)
     {
-        LevenshtrieSearchResult<string>[] searchResults = _trie.Search(word, maxEditDistance: 2);
-        return searchResults.Any(result => DetailedCompare(result.Distance, result.Result, word));
-    }
-
-    private bool DetailedCompare(int distance, string blacklistedWord, string word)
-    {
-        // Your custom logic goes here
-        return true;
+        IEnumerable<LevenshtrieSearchResult<string>> searchResults = _trie.EnumerateSearch(word, maxEditDistance: 1);
+        return searchResults.Any();
     }
 }
-
 ```
 
 </details>
@@ -209,30 +198,30 @@ The English Language dataset used in the benchmarks contains approximately 465,0
 <summary>Search all English Language with a fuzzy key</summary>
 
 - **Naive**: Compute Levenshtein Distance against all words.
-- **Levenshtypo**: This library.
+- **Levenshtypo_All**: This library, with all results buffered into an array.
+- **Levenshtypo_Lazy**: This library, with lazy evaluation (`IEnumerable`).
+- **Levenshtypo_Any**: This library, with lazy evaluation (`IEnumerable`), stopping at the first result.
 - **Dictionary**: .NET Dictionary which only works for distance of 0.
 
-```
-
-BenchmarkDotNet v0.13.12, Windows 11 (10.0.22631.3880/23H2/2023Update/SunValley3)
-AMD Ryzen 9 5950X, 1 CPU, 32 logical and 16 physical cores
-.NET SDK 8.0.400-preview.0.24324.5
-  [Host]     : .NET 8.0.6 (8.0.624.26715), X64 RyuJIT AVX2
-  DefaultJob : .NET 8.0.6 (8.0.624.26715), X64 RyuJIT AVX2
-
-  
-```
-| Method                | Mean              | Error             | StdDev            | Gen0   | Allocated |
-|---------------------- |------------------:|------------------:|------------------:|-------:|----------:|
-| Distance0_Dictionary  |          8.548 ns |         0.0096 ns |         0.0081 ns |      - |         - |
-| Distance0_Levenshtypo |        331.396 ns |         1.0820 ns |         0.9035 ns | 0.0124 |     208 B |
-| Distance1_Levenshtypo |     18,655.543 ns |       176.4438 ns |       156.4128 ns |      - |     424 B |
-| Distance2_Levenshtypo |    260,006.508 ns |       952.2781 ns |       844.1697 ns |      - |    1832 B |
-| Distance3_Levenshtypo |  1,518,877.956 ns |    25,025.3556 ns |    23,408.7332 ns |      - |   17905 B |
-| Distance0_Naive       |    805,520.354 ns |    15,697.4007 ns |    13,915.3369 ns |      - |      89 B |
-| Distance1_Naive       | 68,290,143.333 ns | 1,318,565.4424 ns | 1,233,386.9329 ns |      - |     180 B |
-| Distance2_Naive       | 71,591,125.123 ns | 1,408,712.7964 ns | 2,064,872.9517 ns |      - |     713 B |
-| Distance3_Naive       | 70,418,511.111 ns | 1,378,967.7153 ns | 1,933,120.1471 ns |      - |    4356 B |
+| Method                     | Mean              | Allocated |
+|--------------------------- |------------------:|----------:|
+| Distance0_Levenshtypo_All  |        361.444 ns |     240 B |
+| Distance0_Levenshtypo_Lazy |        975.169 ns |     480 B |
+| Distance0_Levenshtypo_Any  |        614.947 ns |     480 B |
+| Distance0_Dictionary       |          9.128 ns |         - |
+| Distance0_Naive            |    813,419.616 ns |      89 B |
+| Distance1_Levenshtypo_All  |     19,008.096 ns |     536 B |
+| Distance1_Levenshtypo_Lazy |     38,615.868 ns |     480 B |
+| Distance1_Levenshtypo_Any  |     25,805.258 ns |     480 B |
+| Distance1_Naive            | 73,459,775.661 ns |     193 B |
+| Distance2_Levenshtypo_All  |    276,157.020 ns |    2600 B |
+| Distance2_Levenshtypo_Lazy |    440,689.397 ns |     480 B |
+| Distance2_Levenshtypo_Any  |    215,542.244 ns |     480 B |
+| Distance2_Naive            | 68,999,745.833 ns |     700 B |
+| Distance3_Levenshtypo_All  |  1,617,282.340 ns |   25985 B |
+| Distance3_Levenshtypo_Lazy |  2,452,026.901 ns |    1123 B |
+| Distance3_Levenshtypo_Any  |    231,972.804 ns |     584 B |
+| Distance3_Naive            | 71,845,738.624 ns |    4369 B |
 
 </details>
 
@@ -242,20 +231,10 @@ AMD Ryzen 9 5950X, 1 CPU, 32 logical and 16 physical cores
 - **Levenshtypo**: This library.
 - **Dictionary**: .NET Dictionary for comparison.
 
-```
-
-BenchmarkDotNet v0.13.12, Windows 11 (10.0.22631.3880/23H2/2023Update/SunValley3)
-AMD Ryzen 9 5950X, 1 CPU, 32 logical and 16 physical cores
-.NET SDK 8.0.400-preview.0.24324.5
-  [Host]     : .NET 8.0.6 (8.0.624.26715), X64 RyuJIT AVX2
-  DefaultJob : .NET 8.0.6 (8.0.624.26715), X64 RyuJIT AVX2
-
-
-```
-| Method              | Mean          | Error        | StdDev       | Gen0      | Gen1     | Gen2     | Allocated    |
-|-------------------- |--------------:|-------------:|-------------:|----------:|---------:|---------:|-------------:|
-| English_Dictionary  |  34,213.49 μs |   665.436 μs | 1,074.555 μs |  750.0000 | 750.0000 | 750.0000 |  35524.21 KB |
-| English_Levenshtypo | 139,977.62 μs | 1,479.846 μs | 1,384.249 μs | 4250.0000 | 750.0000 | 750.0000 | 168067.98 KB |
+| Method              | Mean          | Allocated    |
+|-------------------- |--------------:|-------------:|
+| English_Dictionary  |  31,755.45 μs |  35524.19 KB |
+| English_Levenshtypo | 142,010.47 μs | 145145.15 KB |
 
 </details>
 

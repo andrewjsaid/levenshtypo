@@ -20,6 +20,15 @@ public class LevenshtrieSearchTests
     public object Distance0_Dictionary() => _dictionary[SearchWord];
 
     [Benchmark]
+    public object Distance0_Levenshtypo_All() => _levenshtrie.Search(_automaton0);
+
+    [Benchmark]
+    public object Distance0_Levenshtypo_Lazy() => _levenshtrie.EnumerateSearch(_automaton0).Count();
+
+    [Benchmark]
+    public object Distance0_Levenshtypo_Any() => _levenshtrie.EnumerateSearch(_automaton0).Any();
+
+    [Benchmark]
     public object Distance0_Naive()
     {
         var results = new List<string>();
@@ -35,7 +44,13 @@ public class LevenshtrieSearchTests
     }
 
     [Benchmark]
-    public object Distance0_Levenshtypo() => _levenshtrie.Search(_automaton0);
+    public object Distance1_Levenshtypo_All() => _levenshtrie.Search(_automaton1);
+
+    [Benchmark]
+    public object Distance1_Levenshtypo_Lazy() => _levenshtrie.EnumerateSearch(_automaton1).Count();
+
+    [Benchmark]
+    public object Distance1_Levenshtypo_Any() => _levenshtrie.EnumerateSearch(_automaton1).Any();
 
     [Benchmark]
     public object Distance1_Naive()
@@ -53,7 +68,13 @@ public class LevenshtrieSearchTests
     }
 
     [Benchmark]
-    public object Distance1_Levenshtypo() => _levenshtrie.Search(_automaton1);
+    public object Distance2_Levenshtypo_All() => _levenshtrie.Search(_automaton2);
+
+    [Benchmark]
+    public object Distance2_Levenshtypo_Lazy() => _levenshtrie.EnumerateSearch(_automaton2).Count();
+
+    [Benchmark]
+    public object Distance2_Levenshtypo_Any() => _levenshtrie.EnumerateSearch(_automaton2).Any();
 
     [Benchmark]
     public object Distance2_Naive()
@@ -71,7 +92,13 @@ public class LevenshtrieSearchTests
     }
 
     [Benchmark]
-    public object Distance2_Levenshtypo() => _levenshtrie.Search(_automaton2);
+    public object Distance3_Levenshtypo_All() => _levenshtrie.Search(_automaton3);
+
+    [Benchmark]
+    public object Distance3_Levenshtypo_Lazy() => _levenshtrie.EnumerateSearch(_automaton3).Count();
+
+    [Benchmark]
+    public object Distance3_Levenshtypo_Any() => _levenshtrie.EnumerateSearch(_automaton3).Any();
 
     [Benchmark]
     public object Distance3_Naive()
@@ -87,7 +114,4 @@ public class LevenshtrieSearchTests
         }
         return results;
     }
-
-    [Benchmark]
-    public object Distance3_Levenshtypo() => _levenshtrie.Search(_automaton3);
 }

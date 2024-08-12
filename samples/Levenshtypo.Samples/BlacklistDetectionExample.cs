@@ -2,7 +2,7 @@
 
 /// <summary>
 /// An example class wrapping Levenshtypo library to detect if
-/// a given word is similar to a blacklisted word.
+/// a given word is similar enough to a blacklisted word.
 /// </summary>
 public class BlacklistDetectionExample
 {
@@ -10,20 +10,12 @@ public class BlacklistDetectionExample
 
     public BlacklistDetectionExample(IEnumerable<string> blacklist)
     {
-        _trie = Levenshtrie<string>.Create(
-            blacklist.Select(w => new KeyValuePair<string, string>(w, w)),
-            ignoreCase: true);
+        _trie = Levenshtrie.CreateStrings(blacklist, ignoreCase: true);
     }
 
     public bool IsBlacklisted(string word)
     {
-        LevenshtrieSearchResult<string>[] searchResults = _trie.Search(word, maxEditDistance: 2);
-        return searchResults.Any(result => DetailedCompare(result.Distance, result.Result, word));
-    }
-
-    private bool DetailedCompare(int distance, string blacklistedWord, string word)
-    {
-        // Your custom logic goes here
-        return true;
+        IEnumerable<LevenshtrieSearchResult<string>> searchResults = _trie.EnumerateSearch(word, maxEditDistance: 1);
+        return searchResults.Any();
     }
 }

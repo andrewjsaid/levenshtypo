@@ -1,4 +1,5 @@
-﻿using Shouldly;
+﻿using System.Diagnostics.CodeAnalysis;
+using Shouldly;
 
 namespace Levenshtypo.Tests;
 
@@ -10,30 +11,20 @@ public class LevenshtrieSearchTests
         string[] entries = ["", "1", "12", "123"];
         var t = Levenshtrie<string>.Create(entries.Select(e => new KeyValuePair<string, string>(e, e)));
 
-        t.Search(new LevenshtomatonFactory().Construct("", 2)).Select(r => r.Result)
-            .ShouldBe(["", "1", "12"], ignoreOrder: true);
-
-        t.Search(new LevenshtomatonFactory().Construct("1", 1)).Select(r => r.Result)
-            .ShouldBe(["", "1", "12"], ignoreOrder: true);
+        Test(t, "", 2, ["", "1", "12"]);
+        Test(t, "1", 1, ["", "1", "12"]);
     }
 
     [Fact]
     public void Food()
     {
-        string[] entries = ["f", "food", "good", "mood", "flood", "fod", "fob", "foodie", "\U0002f971"];
+        string[] entries = ["mood", "f", "food", "good", "dood", "flood", "fod", "fob", "foodie", "\U0002f971"];
         var t = Levenshtrie<string>.Create(entries.Select(e => new KeyValuePair<string, string>(e, e)));
 
-        t.Search(new LevenshtomatonFactory().Construct("food", 0)).Select(r => r.Result)
-            .ShouldBe(["food"], ignoreOrder: true);
-
-        t.Search(new LevenshtomatonFactory().Construct("food", 1)).Select(r => r.Result)
-            .ShouldBe(["food", "good", "mood", "flood", "fod"], ignoreOrder: true);
-
-        t.Search(new LevenshtomatonFactory().Construct("food", 2)).Select(r => r.Result)
-            .ShouldBe(["food", "good", "mood", "flood", "fod", "fob", "foodie"], ignoreOrder: true);
-
-        t.Search(new LevenshtomatonFactory().Construct("\U0001f970", 1)).Select(r => r.Result)
-            .ShouldBe(["f", "\U0002f971"], ignoreOrder: true);
+        Test(t, "food", 0, ["food"]);
+        Test(t, "food", 1, ["food", "good", "dood", "mood", "flood", "fod"]);
+        Test(t, "food", 2, ["food", "good", "dood", "mood", "flood", "fod", "fob", "foodie"]);
+        Test(t, "\U0001f970", 1, ["f", "\U0002f971"]);
     }
 
     [Fact]
@@ -56,22 +47,10 @@ public class LevenshtrieSearchTests
         {
             var search = FindWordsWithinNDistance(word, 3);
 
-            levenshtrie
-                .Search(word, 0)
-                .ShouldBe(search.Where(x => x.distance <= 0).Select(x => new LevenshtrieSearchResult<string>(x.distance, x.word)), ignoreOrder: true);
-
-            levenshtrie.
-                Search(word, 1)
-                .ShouldBe(search.Where(x => x.distance <= 1).Select(x => new LevenshtrieSearchResult<string>(x.distance, x.word)), ignoreOrder: true);
-
-            levenshtrie
-                .Search(word, 2)
-                .ShouldBe(search.Where(x => x.distance <= 2).Select(x => new LevenshtrieSearchResult<string>(x.distance, x.word)), ignoreOrder: true);
-
-            levenshtrie
-                .Search(word, 3)
-                .ShouldBe(search.Where(x => x.distance <= 3).Select(x => new LevenshtrieSearchResult<string>(x.distance, x.word)), ignoreOrder: true);
-
+            Test(levenshtrie, word, 0, search.Where(x => x.distance <= 0));
+            Test(levenshtrie, word, 1, search.Where(x => x.distance <= 1));
+            Test(levenshtrie, word, 2, search.Where(x => x.distance <= 2));
+            Test(levenshtrie, word, 3, search.Where(x => x.distance <= 3));
         }
 
         IReadOnlyList<(string word, int distance)> FindWordsWithinNDistance(string query, int maxEditDistance)
@@ -97,8 +76,7 @@ public class LevenshtrieSearchTests
         string[] entries = [new string('a', 10_000) + 'a', new string('a', 10_000) + 'b'];
         var t = Levenshtrie<string>.Create(entries.Select(e => new KeyValuePair<string, string>(e, e)));
 
-        t.Search(entries[0], maxEditDistance: 1).Select(r => r.Result)
-            .ShouldBe(entries);
+        Test(t, entries[0], 1, [(entries[1], 1), (entries[0], 0)]);
     }
 
     [Fact]
@@ -112,7 +90,37 @@ public class LevenshtrieSearchTests
 
         var t = Levenshtrie<string>.Create(entries.Select(e => new KeyValuePair<string, string>(e, e)));
 
-        t.Search(entries.Last(), maxEditDistance: 1).Select(r => r.Result)
-            .ShouldBe(entries[^2..]);
+        Test(t, entries[^1], 1, [(entries[^2], 1), (entries[^1], 0)]);
+    }
+
+    private static void Test(Levenshtrie<string> t, string query, int distance, IEnumerable<string> expected)
+    {
+        Test(t, query, distance, expected.Select(e => (e, LevenshteinDistance.Calculate(query, e))));
+    }
+
+    private static void Test(Levenshtrie<string> t, string query, int distance, IEnumerable<(string word, int distance)> expected)
+    {
+        var expectedResults = expected.Select(e => new LevenshtrieSearchResult<string>(e.distance, e.word));
+
+        t.Search(query, distance)
+            .ShouldBe(expectedResults, ignoreOrder: true, comparer: new LevenshtrieSearchResultComparer<string>());
+        
+        t.EnumerateSearch(query, distance)
+            .ShouldBe(expectedResults, ignoreOrder: true, comparer: new LevenshtrieSearchResultComparer<string>());
+    }
+
+    private class LevenshtrieSearchResultComparer<T> : IEqualityComparer<LevenshtrieSearchResult<T>>
+    {
+        public bool Equals(LevenshtrieSearchResult<T> x, LevenshtrieSearchResult<T> y)
+            => x.Distance == y.Distance
+            && (x.Result?.Equals(y.Result) ?? (y.Result is null));
+
+        public int GetHashCode([DisallowNull] LevenshtrieSearchResult<T> obj)
+        {
+            var hashCode = new HashCode();
+            hashCode.Add(obj.Distance);
+            hashCode.Add(obj.Result);
+            return hashCode.ToHashCode();
+        }
     }
 }

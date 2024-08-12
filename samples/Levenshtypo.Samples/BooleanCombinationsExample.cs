@@ -11,8 +11,7 @@ public class BooleanCombinationsExample
 
     public BooleanCombinationsExample(IEnumerable<string> words)
     {
-        _trie = Levenshtrie<string>.Create(
-            words.Select(w => new KeyValuePair<string, string>(w, w)));
+        _trie = Levenshtrie.CreateStrings(words);
     }
 
     public string[] SearchCommon(string a, string b)

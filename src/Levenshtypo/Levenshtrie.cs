@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -8,12 +9,28 @@ using System.Text;
 
 namespace Levenshtypo;
 
+public static class Levenshtrie
+{
+    /// <summary>
+    /// Builds a tree from the given associations between strings and values.
+    /// </summary>
+    public static Levenshtrie<T> Create<T>(IEnumerable<KeyValuePair<string, T>> source, bool ignoreCase = false)
+        => Levenshtrie<T>.Create(source, ignoreCase);
+
+    /// <summary>
+    /// Builds a tree from the given strings.
+    /// </summary>
+    public static Levenshtrie<string> CreateStrings(IEnumerable<string> source, bool ignoreCase = false)
+        => Levenshtrie<string>.Create(source.Select(s => new KeyValuePair<string, string>(s, s)), ignoreCase);
+
+}
+
 /// <summary>
 /// A data structure capable of associating strings with values and fuzzy lookups on those strings.
 /// Supports a single value per unique input string.
 /// Does not support modification after creation.
 /// </summary>
-public abstract class Levenshtrie<T> : ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>
+public abstract class Levenshtrie<T> : ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>, ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>>
 {
 
     private protected Levenshtrie() { }
@@ -42,7 +59,7 @@ public abstract class Levenshtrie<T> : ILevenshtomatonExecutor<LevenshtrieSearch
 
     /// <summary>
     /// Searches for values with a key at the maximum error distance.
-    /// The results are return in an arbitrary sort order.
+    /// The results are return in an arbitrary order.
     /// </summary>
     public LevenshtrieSearchResult<T>[] Search(string text, int maxEditDistance, LevenshtypoMetric metric = LevenshtypoMetric.Levenshtein)
     {
@@ -52,7 +69,7 @@ public abstract class Levenshtrie<T> : ILevenshtomatonExecutor<LevenshtrieSearch
 
     /// <summary>
     /// Searches for values with a key which is accepted by the specified automaton.
-    /// The results are return in an arbitrary sort order.
+    /// The results are return in an arbitrary order.
     /// </summary>
     public LevenshtrieSearchResult<T>[] Search(Levenshtomaton automaton)
     {
@@ -61,25 +78,90 @@ public abstract class Levenshtrie<T> : ILevenshtomatonExecutor<LevenshtrieSearch
             throw new ArgumentException("Case sensitivity of automaton does not match.");
         }
 
-        return automaton.Execute(this);
+        ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]> @this = this;
+        return automaton.Execute(@this);
     }
 
     /// <summary>
     /// Searches for values with a key accepted by the specified search state.
-    /// The results are return in an arbitrary sort order.
-    /// </summary>
-    public abstract LevenshtrieSearchResult<T>[] Search<TSearchState>(TSearchState searcher)
-        where TSearchState : ILevenshtomatonExecutionState<TSearchState>;
-
-    /// <summary>
-    /// Searches for values with a key accepted by the specified search state.
-    /// The results are return in an arbitrary sort order.
+    /// The results are return in an arbitrary order.
     /// </summary>
     public LevenshtrieSearchResult<T>[] Search(LevenshtomatonExecutionState searcher)
         => Search<LevenshtomatonExecutionState>(searcher);
 
-    LevenshtrieSearchResult<T>[] ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>.ExecuteAutomaton<TSearchState>(TSearchState state)
-        => Search(state);
+    /// <summary>
+    /// Searches for values with a key accepted by the specified search state.
+    /// The results are return in an arbitrary order.
+    /// </summary>
+    public abstract LevenshtrieSearchResult<T>[] Search<TSearchState>(TSearchState searcher)
+        where TSearchState : ILevenshtomatonExecutionState<TSearchState>;
+
+    LevenshtrieSearchResult<T>[] ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>.ExecuteAutomaton<TSearchState>(TSearchState executionState) => Search(executionState);
+
+    /// <summary>
+    /// Lazily searches for values with a key at the maximum error distance.
+    /// The results are return in an arbitrary order.
+    /// </summary>
+    /// <remarks>
+    /// Due to lazy evaluation, <see cref="EnumerateSearch"/> uses less
+    /// memory than <see cref="Search"/>, and can be faster if not
+    /// all results are consumed. However, it is slower when most results
+    /// will be retrieved anyway.
+    /// </remarks>
+    public IEnumerable<LevenshtrieSearchResult<T>> EnumerateSearch(string text, int maxEditDistance, LevenshtypoMetric metric = LevenshtypoMetric.Levenshtein)
+    {
+        var automaton = LevenshtomatonFactory.Instance.Construct(text, maxEditDistance, ignoreCase: IgnoreCase, metric: metric);
+        return EnumerateSearch(automaton);
+    }
+
+    /// <summary>
+    /// Lazily searches for values with a key which is accepted by the specified automaton.
+    /// The results are return in an arbitrary order.
+    /// </summary>
+    /// <remarks>
+    /// Due to lazy evaluation, <see cref="EnumerateSearch"/> uses less
+    /// memory than <see cref="Search"/>, and can be faster if not
+    /// all results are consumed. However, it is slower when most results
+    /// will be retrieved anyway.
+    /// </remarks>
+    public IEnumerable<LevenshtrieSearchResult<T>> EnumerateSearch(Levenshtomaton automaton)
+    {
+        if (automaton.IgnoreCase != IgnoreCase)
+        {
+            throw new ArgumentException("Case sensitivity of automaton does not match.");
+        }
+
+        ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>> @this = this;
+        return automaton.Execute(@this);
+    }
+
+    /// <summary>
+    /// Lazily searches for values with a key accepted by the specified search state.
+    /// The results are return in an arbitrary order.
+    /// </summary>
+    /// <remarks>
+    /// Due to lazy evaluation, <see cref="EnumerateSearch"/> uses less
+    /// memory than <see cref="Search"/>, and can be faster if not
+    /// all results are consumed. However, it is slower when most results
+    /// will be retrieved anyway.
+    /// </remarks>
+    public IEnumerable<LevenshtrieSearchResult<T>> EnumerateSearch(LevenshtomatonExecutionState searcher)
+        => EnumerateSearch<LevenshtomatonExecutionState>(searcher);
+
+    /// <summary>
+    /// Lazily searches for values with a key accepted by the specified search state.
+    /// The results are return in an arbitrary order.
+    /// </summary>
+    /// <remarks>
+    /// Due to lazy evaluation, <see cref="EnumerateSearch"/> uses less
+    /// memory than <see cref="Search"/>, and can be faster if not
+    /// all results are consumed. However, it is slower when most results
+    /// will be retrieved anyway.
+    /// </remarks>
+    public abstract IEnumerable<LevenshtrieSearchResult<T>> EnumerateSearch<TSearchState>(TSearchState searcher)
+        where TSearchState : ILevenshtomatonExecutionState<TSearchState>;
+
+    IEnumerable<LevenshtrieSearchResult<T>> ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>>.ExecuteAutomaton<TState>(TState executionState) => EnumerateSearch(executionState);
 }
 
 internal sealed class Levenshtrie<T, TCaseSensitivity> :
@@ -412,7 +494,114 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
             }
         }
     }
-    
+
+    public override IEnumerable<LevenshtrieSearchResult<T>> EnumerateSearch<TSearchState>(TSearchState searcher)
+        => new SearchEnumerable<TSearchState>(this, searcher);
+
+    private class SearchEnumerable<TSearchState> : IEnumerable<LevenshtrieSearchResult<T>>
+        where TSearchState : ILevenshtomatonExecutionState<TSearchState>
+    {
+        private readonly Levenshtrie<T, TCaseSensitivity> _trie;
+        private readonly TSearchState _initialState;
+
+        public SearchEnumerable(Levenshtrie<T, TCaseSensitivity> trie, TSearchState initialState)
+        {
+            _trie = trie;
+            _initialState = initialState;
+        }
+
+        public IEnumerator<LevenshtrieSearchResult<T>> GetEnumerator() => new SearchEnumerator<TSearchState>(_trie, _initialState);
+
+        IEnumerator IEnumerable.GetEnumerator() => new SearchEnumerator<TSearchState>(_trie, _initialState);
+    }
+
+    private class SearchEnumerator<TSearchState> : IEnumerator<LevenshtrieSearchResult<T>>
+        where TSearchState : ILevenshtomatonExecutionState<TSearchState>
+    {
+        private readonly Levenshtrie<T, TCaseSensitivity> _trie;
+        private readonly Stack<(int entryIndex, TSearchState searchState, int nextChildIndex)> _state = new();
+        
+        private const int CheckCurrentChildIndex = -1;
+
+        public SearchEnumerator(Levenshtrie<T, TCaseSensitivity> trie, TSearchState initialState)
+        {
+            _trie = trie;
+            _state.Push((entryIndex: 0, searchState: initialState, nextChildIndex: CheckCurrentChildIndex));
+        }
+
+        public LevenshtrieSearchResult<T> Current { get; private set; }
+
+        object IEnumerator.Current => Current;
+
+        public void Dispose() { }
+
+        public bool MoveNext()
+        {
+            while (_state.TryPop(out var state))
+            {
+                var (entryIndex, searchState, nextChildIndex) = state;
+
+                var entry = _trie._entries[entryIndex];
+
+                if (nextChildIndex == CheckCurrentChildIndex)
+                {
+                    if (searchState.IsFinal && entry.ResultIndex >= 0)
+                    {
+                        if (entry.NumChildren > 0)
+                        {
+                            _state.Push((entryIndex: entryIndex, searchState: searchState, nextChildIndex: 0));
+                        }
+                        Current = new LevenshtrieSearchResult<T>(searchState.Distance, _trie._results[entry.ResultIndex]);
+                        return true;
+                    }
+                    
+                    // Just increment this index instead of Push/Pop
+                    nextChildIndex = 0;
+                }
+
+                if (nextChildIndex < entry.NumChildren)
+                {
+                    if (nextChildIndex < entry.NumChildren - 1)
+                    {
+                        _state.Push((entryIndex: entryIndex, searchState: searchState, nextChildIndex: nextChildIndex + 1));
+                    }
+
+                    var childEntry = _trie._entries[entry.ChildEntriesStartIndex + nextChildIndex];
+
+                    if (searchState.MoveNext(childEntry.EntryValue, out var nextSearchState))
+                    {
+                        bool matchesTailData = true;
+                        var entryTailDataLength = childEntry.TailDataLength;
+                        if (entryTailDataLength > 0)
+                        {
+                            var tailData = _trie._tailData.AsSpan(childEntry.TailDataIndex, entryTailDataLength);
+
+                            foreach (var tailDataRune in tailData.EnumerateRunes())
+                            {
+                                if (!nextSearchState.MoveNext(tailDataRune, out nextSearchState))
+                                {
+                                    matchesTailData = false;
+                                    break;
+                                }
+                            }
+
+                        }
+
+                        if (matchesTailData)
+                        {
+                            _state.Push((entryIndex: entry.ChildEntriesStartIndex + nextChildIndex, searchState: nextSearchState, nextChildIndex: CheckCurrentChildIndex));
+                        }
+                    }
+                }
+            }
+
+            Current = default;
+            return false;
+        }
+
+        public void Reset() => throw new NotSupportedException();
+    }
+
     private struct Kvp
     {
         public Kvp(KeyValuePair<string, T> input)

@@ -10,9 +10,7 @@ public class TypoSuggestionExample
 
     public TypoSuggestionExample(IEnumerable<string> words)
     {
-        _trie = Levenshtrie<string>.Create(
-            words.Select(w => new KeyValuePair<string, string>(w, w)),
-            ignoreCase: true);
+        _trie = Levenshtrie.CreateStrings(words, ignoreCase: true);
     }
 
     public string[] GetSimilarWords(string word)

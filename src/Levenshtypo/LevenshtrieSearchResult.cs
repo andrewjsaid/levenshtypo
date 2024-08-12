@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Levenshtypo;
 
+[DebuggerDisplay("{Result} [{Distance}]")]
 public struct LevenshtrieSearchResult<T>
 {
     internal LevenshtrieSearchResult(int distance, T result)
@@ -15,6 +17,8 @@ public struct LevenshtrieSearchResult<T>
     public int Distance { get; }
 
     public T Result { get; }
+
+    public override readonly string ToString() => Result?.ToString() ?? string.Empty;
 }
 
 internal class LevenshtrieSearchResultComparer<T> : IEqualityComparer<LevenshtrieSearchResult<T>>
