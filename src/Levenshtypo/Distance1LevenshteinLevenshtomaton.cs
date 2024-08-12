@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 
 namespace Levenshtypo;
@@ -23,7 +24,7 @@ internal class Distance1LevenshteinLevenshtomaton<TCaseSensitivity> : Levenshtom
 
     public override T Execute<T>(ILevenshtomatonExecutor<T> executor) => executor.ExecuteAutomaton(StartSpecialized());
 
-    public override bool Matches(ReadOnlySpan<char> text) => DefaultMatchesImplementation(text, StartSpecialized());
+    public override bool Matches(ReadOnlySpan<char> text, out int distance) => DefaultMatchesImplementation(text, StartSpecialized(), out distance);
 
     private State StartSpecialized() => State.Start(_sRune);
 
@@ -31,13 +32,9 @@ internal class Distance1LevenshteinLevenshtomaton<TCaseSensitivity> : Levenshtom
 
     private readonly struct State : ILevenshtomatonExecutionState<State>
     {
-
-        private static ReadOnlySpan<short> Transitions => [
-            0x02, -1, -1, -1, -1,
-            0x01, 0x100, -1, 0x102, -1, 0x102, -1, -1, -1, -1,
-            0x01, 0x03, 0x100, 0x100, -1, 0x202, 0x102, 0x101, -1, -1, 0x102, 0x102, -1, 0x202, 0x102, 0x101, -1, -1, 0x102, 0x102,
-            0x01, 0x01, 0x03, 0x03, 0x100, 0x100, 0x100, 0x100, -1, -1, 0x202, 0x202, 0x102, 0x102, 0x101, 0x101, -1, -1, -1, -1, 0x102, 0x102, 0x102, 0x102, -1, 0x302, 0x202, 0x201, 0x102, 0x104, 0x101, 0x103, -1, 0x302, -1, 0x302, 0x102, 0x104, 0x102, 0x104,
-        ];
+        private static ReadOnlySpan<short> TransitionsData => [0x02, -1, -1, -1, -1, 0x01, 0x100, -1, 0x102, -1, 0x102, -1, -1, -1, -1, 0x01, 0x03, 0x100, 0x100, -1, 0x202, 0x102, 0x101, -1, -1, 0x102, 0x102, -1, 0x202, 0x102, 0x101, -1, -1, 0x102, 0x102, 0x01, 0x01, 0x03, 0x03, 0x100, 0x100, 0x100, 0x100, -1, -1, 0x202, 0x202, 0x102, 0x102, 0x101, 0x101, -1, -1, -1, -1, 0x102, 0x102, 0x102, 0x102, -1, 0x302, 0x202, 0x201, 0x102, 0x104, 0x101, 0x103, -1, 0x302, -1, 0x302, 0x102, 0x104, 0x102, 0x104];
+        private static ReadOnlySpan<byte> DistanceData => [0x00, 0xFF, 0x01, 0xFF, 0xFF, 0x01, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
+        private static ReadOnlySpan<byte> MinDistanceData => [0x00, 0x01, 0x01, 0x01, 0x01];
 
         private readonly Rune[] _sRune;
         private readonly int _sIndex;
@@ -72,7 +69,7 @@ internal class Distance1LevenshteinLevenshtomaton<TCaseSensitivity> : Levenshtom
             var dStart = 5 * ((1 << vectorLength) - 1);
             var dOffset = _state * (1 << vectorLength) + vector;
 
-            var encodedNext = Transitions[dStart + dOffset];
+            var encodedNext = TransitionsData[dStart + dOffset];
 
             if (encodedNext >= 0)
             {
@@ -98,6 +95,10 @@ internal class Distance1LevenshteinLevenshtomaton<TCaseSensitivity> : Levenshtom
                 2 => 0x18ul,
                 _ => 0x00ul,
             });
+
+        public int Distance => DistanceData[Math.Min(3, _sRune.Length - _sIndex) * 5 + _state];
+
+        public int MinimumDistance => MinDistanceData[_state];
     }
 
 }

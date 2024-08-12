@@ -13,7 +13,7 @@ public class LevenshtrieCustomTraversalTests
 
         var trie = Levenshtrie<int>.Create(Enumerable.Range(0, 1000).Select(i => new KeyValuePair<string, int>(i.ToString(), i)));
 
-        var found = trie.Search(new OnlyGetNChars(2));
+        var found = trie.Search(new OnlyGetNChars(2)).Select(r => r.Result);
 
         found.ShouldBe(Enumerable.Range(10, 90), ignoreOrder: true);
     }
@@ -40,7 +40,7 @@ public class LevenshtrieCustomTraversalTests
                 new AndLevenshtomatonExecutionState(tractor.Start(), factory.Start()),
                 new AndLevenshtomatonExecutionState(farm.Start(), LevenshtomatonExecutionState.FromStruct(new OnlyGetNChars(3))));
 
-        var found = trie.Search(searchState);
+        var found = trie.Search(searchState).Select(r => r.Result);
 
         found.ShouldBe(["Factor", "ARM", "FAM", "FAR"], ignoreOrder: true);
     }
@@ -56,6 +56,10 @@ public class LevenshtrieCustomTraversalTests
         }
 
         public bool IsFinal => _numLeft == 0;
+
+        public int Distance => 0;
+
+        public int MinimumDistance => 0;
 
         public bool MoveNext(Rune c, out OnlyGetNChars next)
         {
@@ -91,6 +95,10 @@ public class LevenshtrieCustomTraversalTests
         }
 
         public override bool IsFinal => _state1.IsFinal && _state2.IsFinal;
+
+        public override int Distance => _state1.Distance + _state2.Distance;
+
+        public override int MinimumDistance => _state1.MinimumDistance + _state2.MinimumDistance;
     }
 
     private class OrLevenshtomatonExecutionState : LevenshtomatonExecutionState
@@ -141,6 +149,10 @@ public class LevenshtrieCustomTraversalTests
             return false;
         }
 
-        public override bool IsFinal => _state1?.IsFinal == true|| _state2?.IsFinal == true;
+        public override bool IsFinal => _state1?.IsFinal == true || _state2?.IsFinal == true;
+
+        public override int Distance => Math.Min(_state1?.Distance ?? int.MaxValue, _state2?.Distance ?? int.MaxValue);
+
+        public override int MinimumDistance => Math.Min(_state1?.MinimumDistance ?? int.MaxValue, _state2?.MinimumDistance ?? int.MaxValue);
     }
 }

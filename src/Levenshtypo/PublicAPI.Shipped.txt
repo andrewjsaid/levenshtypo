@@ -1,23 +1,26 @@
 ﻿#nullable enable
 abstract Levenshtypo.Levenshtomaton.Execute<T>(Levenshtypo.ILevenshtomatonExecutor<T>! executor) -> T
 abstract Levenshtypo.Levenshtomaton.IgnoreCase.get -> bool
-abstract Levenshtypo.Levenshtomaton.Matches(System.ReadOnlySpan<char> text) -> bool
+abstract Levenshtypo.Levenshtomaton.Matches(System.ReadOnlySpan<char> text, out int distance) -> bool
 abstract Levenshtypo.Levenshtomaton.Metric.get -> Levenshtypo.LevenshtypoMetric
 abstract Levenshtypo.Levenshtomaton.Start() -> Levenshtypo.LevenshtomatonExecutionState!
+abstract Levenshtypo.LevenshtomatonExecutionState.Distance.get -> int
 abstract Levenshtypo.LevenshtomatonExecutionState.IsFinal.get -> bool
+abstract Levenshtypo.LevenshtomatonExecutionState.MinimumDistance.get -> int
 abstract Levenshtypo.LevenshtomatonExecutionState.MoveNext(System.Text.Rune c, out Levenshtypo.LevenshtomatonExecutionState! next) -> bool
-abstract Levenshtypo.Levenshtrie<T>.Search(Levenshtypo.Levenshtomaton! automaton) -> T[]!
-abstract Levenshtypo.Levenshtrie<T>.Search(string! text, int maxEditDistance, Levenshtypo.LevenshtypoMetric metric = Levenshtypo.LevenshtypoMetric.Levenshtein) -> T[]!
-abstract Levenshtypo.Levenshtrie<T>.Search<TSearchState>(TSearchState searcher) -> T[]!
+abstract Levenshtypo.Levenshtrie<T>.Search<TSearchState>(TSearchState searcher) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
 abstract Levenshtypo.Levenshtrie<T>.TryGetValue(string! key, out T value) -> bool
 const Levenshtypo.LevenshtomatonFactory.MaxEditDistance = 3 -> int
 Levenshtypo.ILevenshtomatonExecutionState<TSelf>
+Levenshtypo.ILevenshtomatonExecutionState<TSelf>.Distance.get -> int
 Levenshtypo.ILevenshtomatonExecutionState<TSelf>.IsFinal.get -> bool
+Levenshtypo.ILevenshtomatonExecutionState<TSelf>.MinimumDistance.get -> int
 Levenshtypo.ILevenshtomatonExecutionState<TSelf>.MoveNext(System.Text.Rune c, out TSelf next) -> bool
 Levenshtypo.ILevenshtomatonExecutor<T>
 Levenshtypo.ILevenshtomatonExecutor<T>.ExecuteAutomaton<TState>(TState executionState) -> T
 Levenshtypo.LevenshteinDistance
 Levenshtypo.Levenshtomaton
+Levenshtypo.Levenshtomaton.Matches(System.ReadOnlySpan<char> text) -> bool
 Levenshtypo.Levenshtomaton.MaxEditDistance.get -> int
 Levenshtypo.Levenshtomaton.Text.get -> string!
 Levenshtypo.LevenshtomatonExecutionState
@@ -25,7 +28,13 @@ Levenshtypo.LevenshtomatonExecutionState.LevenshtomatonExecutionState() -> void
 Levenshtypo.LevenshtomatonFactory
 Levenshtypo.LevenshtomatonFactory.Construct(string! s, int maxEditDistance, bool ignoreCase = false, Levenshtypo.LevenshtypoMetric metric = Levenshtypo.LevenshtypoMetric.Levenshtein) -> Levenshtypo.Levenshtomaton!
 Levenshtypo.Levenshtrie<T>
-Levenshtypo.Levenshtrie<T>.Search(Levenshtypo.LevenshtomatonExecutionState! searcher) -> T[]!
+Levenshtypo.Levenshtrie<T>.Search(Levenshtypo.Levenshtomaton! automaton) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
+Levenshtypo.Levenshtrie<T>.Search(Levenshtypo.LevenshtomatonExecutionState! searcher) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
+Levenshtypo.Levenshtrie<T>.Search(string! text, int maxEditDistance, Levenshtypo.LevenshtypoMetric metric = Levenshtypo.LevenshtypoMetric.Levenshtein) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
+Levenshtypo.LevenshtrieSearchResult<T>
+Levenshtypo.LevenshtrieSearchResult<T>.Distance.get -> int
+Levenshtypo.LevenshtrieSearchResult<T>.LevenshtrieSearchResult() -> void
+Levenshtypo.LevenshtrieSearchResult<T>.Result.get -> T
 Levenshtypo.LevenshtypoMetric
 Levenshtypo.LevenshtypoMetric.Levenshtein = 0 -> Levenshtypo.LevenshtypoMetric
 Levenshtypo.LevenshtypoMetric.RestrictedEdit = 1 -> Levenshtypo.LevenshtypoMetric

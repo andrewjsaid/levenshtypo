@@ -27,6 +27,18 @@ public interface ILevenshtomatonExecutionState<TSelf> where TSelf : ILevenshtoma
     /// text.
     /// </summary>
     bool IsFinal { get; }
+
+    /// <summary>
+    /// For final states, this is the edit distance representing
+    /// the underlying string with the characters consumed so far.
+    /// </summary>
+    int Distance { get; }
+
+    /// <summary>
+    /// For all states, this is the minimum edit distance possible
+    /// from this state.
+    /// </summary>
+    int MinimumDistance { get; }
 }
 
 /// <summary>
@@ -38,19 +50,13 @@ public interface ILevenshtomatonExecutionState<TSelf> where TSelf : ILevenshtoma
 /// </remarks>
 public abstract class LevenshtomatonExecutionState : ILevenshtomatonExecutionState<LevenshtomatonExecutionState>
 {
-    /// <summary>
-    /// Consume a character in the input string, advancing the automaton to the next state.
-    /// </summary>
-    /// <param name="c">The character being consumed.</param>
-    /// <param name="next">The next state of the automaton, after the character has been consumed.</param>
-    /// <returns>Whether a next state was found.</returns>
     public abstract bool MoveNext(Rune c, out LevenshtomatonExecutionState next);
 
-    /// <summary>
-    /// When true, the characters leading up to this state form text
-    /// which is within the Edit Distance of the original text.
-    /// </summary>
     public abstract bool IsFinal { get; }
+
+    public abstract int Distance { get; }
+
+    public abstract int MinimumDistance { get; }
 
     /// <summary>
     /// Wraps a struct implementation of <see cref="ILevenshtomatonExecutionState{TSelf}"/> into a class.
@@ -78,4 +84,8 @@ internal sealed class StructWrappedLevenshtomatonExecutionState<TState> : Levens
     }
 
     public override bool IsFinal => _state.IsFinal;
+
+    public override int Distance => _state.Distance;
+
+    public override int MinimumDistance => _state.MinimumDistance;
 }

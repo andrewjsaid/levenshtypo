@@ -22,8 +22,10 @@ internal sealed class Distance0Levenshtomaton<TCaseSensitivity> : Levenshtomaton
 
     public override T Execute<T>(ILevenshtomatonExecutor<T> executor) => executor.ExecuteAutomaton(StartSpecialized());
 
-    public override bool Matches(ReadOnlySpan<char> text)
+    public override bool Matches(ReadOnlySpan<char> text, out int distance)
     {
+        distance = 0;
+
         if (IgnoreCase)
         {
             return text.Equals(_s.AsSpan(), StringComparison.OrdinalIgnoreCase);
@@ -68,5 +70,9 @@ internal sealed class Distance0Levenshtomaton<TCaseSensitivity> : Levenshtomaton
         }
 
         public bool IsFinal => _sIndex == _sRune.Length;
+
+        public int Distance => 0;
+
+        public int MinimumDistance => 0;
     }
 }

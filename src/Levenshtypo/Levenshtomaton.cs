@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Buffers;
-using System.Diagnostics;
-using System.Text;
 
 namespace Levenshtypo;
 
@@ -42,7 +39,13 @@ public abstract class Levenshtomaton
     /// Tests if a string matches <see cref="Text"/> within
     /// <see cref="MaxEditDistance"/> edits (insertions, deletions, substitutions).
     /// </summary>
-    public abstract bool Matches(ReadOnlySpan<char> text);
+    public bool Matches(ReadOnlySpan<char> text) => Matches(text, out _);
+
+    /// <summary>
+    /// Tests if a string matches <see cref="Text"/> within
+    /// <see cref="MaxEditDistance"/> edits (insertions, deletions, substitutions).
+    /// </summary>
+    public abstract bool Matches(ReadOnlySpan<char> text, out int distance);
 
     /// <summary>
     /// Begins execution of the automaton against a data structure.
@@ -58,16 +61,24 @@ public abstract class Levenshtomaton
     /// </summary>
     public abstract LevenshtomatonExecutionState Start();
 
-    private protected bool DefaultMatchesImplementation<TState>(ReadOnlySpan<char> text, TState state) where TState : struct, ILevenshtomatonExecutionState<TState>
+    private protected bool DefaultMatchesImplementation<TState>(ReadOnlySpan<char> text, TState state, out int distance) where TState : struct, ILevenshtomatonExecutionState<TState>
     {
         foreach (var rune in text.EnumerateRunes())
         {
             if (!state.MoveNext(rune, out state))
             {
-                return false;
+                goto Failed;
             }
         }
 
-        return state.IsFinal;
+        if (state.IsFinal)
+        {
+            distance = state.Distance;
+            return true;
+        }
+
+        Failed:
+        distance = default;
+        return false;
     }
 }

@@ -10,10 +10,10 @@ public class LevenshtrieSearchTests
         string[] entries = ["", "1", "12", "123"];
         var t = Levenshtrie<string>.Create(entries.Select(e => new KeyValuePair<string, string>(e, e)));
 
-        t.Search(new LevenshtomatonFactory().Construct("", 2))
+        t.Search(new LevenshtomatonFactory().Construct("", 2)).Select(r => r.Result)
             .ShouldBe(["", "1", "12"], ignoreOrder: true);
 
-        t.Search(new LevenshtomatonFactory().Construct("1", 1))
+        t.Search(new LevenshtomatonFactory().Construct("1", 1)).Select(r => r.Result)
             .ShouldBe(["", "1", "12"], ignoreOrder: true);
     }
 
@@ -23,16 +23,16 @@ public class LevenshtrieSearchTests
         string[] entries = ["f", "food", "good", "mood", "flood", "fod", "fob", "foodie", "\U0002f971"];
         var t = Levenshtrie<string>.Create(entries.Select(e => new KeyValuePair<string, string>(e, e)));
 
-        t.Search(new LevenshtomatonFactory().Construct("food", 0))
+        t.Search(new LevenshtomatonFactory().Construct("food", 0)).Select(r => r.Result)
             .ShouldBe(["food"], ignoreOrder: true);
 
-        t.Search(new LevenshtomatonFactory().Construct("food", 1))
+        t.Search(new LevenshtomatonFactory().Construct("food", 1)).Select(r => r.Result)
             .ShouldBe(["food", "good", "mood", "flood", "fod"], ignoreOrder: true);
 
-        t.Search(new LevenshtomatonFactory().Construct("food", 2))
+        t.Search(new LevenshtomatonFactory().Construct("food", 2)).Select(r => r.Result)
             .ShouldBe(["food", "good", "mood", "flood", "fod", "fob", "foodie"], ignoreOrder: true);
 
-        t.Search(new LevenshtomatonFactory().Construct("\U0001f970", 1))
+        t.Search(new LevenshtomatonFactory().Construct("\U0001f970", 1)).Select(r => r.Result)
             .ShouldBe(["f", "\U0002f971"], ignoreOrder: true);
     }
 
@@ -58,19 +58,19 @@ public class LevenshtrieSearchTests
 
             levenshtrie
                 .Search(word, 0)
-                .ShouldBe(search.Where(x => x.distance <= 0).Select(x => x.word), ignoreOrder: true);
+                .ShouldBe(search.Where(x => x.distance <= 0).Select(x => new LevenshtrieSearchResult<string>(x.distance, x.word)), ignoreOrder: true);
 
             levenshtrie.
                 Search(word, 1)
-                .ShouldBe(search.Where(x => x.distance <= 1).Select(x => x.word), ignoreOrder: true);
+                .ShouldBe(search.Where(x => x.distance <= 1).Select(x => new LevenshtrieSearchResult<string>(x.distance, x.word)), ignoreOrder: true);
 
             levenshtrie
                 .Search(word, 2)
-                .ShouldBe(search.Where(x => x.distance <= 2).Select(x => x.word), ignoreOrder: true);
+                .ShouldBe(search.Where(x => x.distance <= 2).Select(x => new LevenshtrieSearchResult<string>(x.distance, x.word)), ignoreOrder: true);
 
             levenshtrie
                 .Search(word, 3)
-                .ShouldBe(search.Where(x => x.distance <= 3).Select(x => x.word), ignoreOrder: true);
+                .ShouldBe(search.Where(x => x.distance <= 3).Select(x => new LevenshtrieSearchResult<string>(x.distance, x.word)), ignoreOrder: true);
 
         }
 
@@ -97,7 +97,7 @@ public class LevenshtrieSearchTests
         string[] entries = [new string('a', 10_000) + 'a', new string('a', 10_000) + 'b'];
         var t = Levenshtrie<string>.Create(entries.Select(e => new KeyValuePair<string, string>(e, e)));
 
-        t.Search(entries[0], maxEditDistance: 1)
+        t.Search(entries[0], maxEditDistance: 1).Select(r => r.Result)
             .ShouldBe(entries);
     }
 
@@ -112,7 +112,7 @@ public class LevenshtrieSearchTests
 
         var t = Levenshtrie<string>.Create(entries.Select(e => new KeyValuePair<string, string>(e, e)));
 
-        t.Search(entries.Last(), maxEditDistance: 1)
+        t.Search(entries.Last(), maxEditDistance: 1).Select(r => r.Result)
             .ShouldBe(entries[^2..]);
     }
 }

@@ -67,7 +67,7 @@ public class LevenshtomatonTests
             {
                 foreach (var automaton in automata)
                 {
-                    Matches(automaton, testWord).ShouldBe(distance <= automaton.MaxEditDistance, $"Distance: {automaton.MaxEditDistance}, Type: {automaton}, TestWord: {testWord}");
+                    Matches(automaton, testWord, distance).ShouldBe(distance <= automaton.MaxEditDistance, $"Distance: {automaton.MaxEditDistance}, Type: {automaton}, TestWord: {testWord}");
                 }
             }
         }
@@ -89,8 +89,8 @@ public class LevenshtomatonTests
 
             foreach (var automaton in caseSensitiveAutomata.Union(caseInsensitiveAutomata))
             {
-                Matches(automaton, word).ShouldBeTrue();
-                Matches(automaton, word.ToUpperInvariant()).ShouldBe(automaton.IgnoreCase, $"Distance: {automaton.MaxEditDistance}, Type: {automaton}");
+                Matches(automaton, word, 0).ShouldBeTrue();
+                Matches(automaton, word.ToUpperInvariant(), 0).ShouldBe(automaton.IgnoreCase, $"Distance: {automaton.MaxEditDistance}, Type: {automaton}");
             }
         }
     }
@@ -108,13 +108,17 @@ public class LevenshtomatonTests
         var automata = Construct(automatonWord, ignoreCase: false, metric: metric);
         foreach (var automaton in automata)
         {
-            Matches(automaton, queryWord).ShouldBe(distance <= automaton.MaxEditDistance, $"Distance: {automaton.MaxEditDistance}, Type: {automaton}");
+            Matches(automaton, queryWord, distance).ShouldBe(distance <= automaton.MaxEditDistance, $"Distance: {automaton.MaxEditDistance}, Type: {automaton}");
         }
     }
 
-    private bool Matches(Levenshtomaton automaton, string word)
+    private bool Matches(Levenshtomaton automaton, string word, int expectedEditDistance)
     {
-        var matchesDirect = automaton.Matches(word);
+        var matchesDirect = automaton.Matches(word, out var actualDistance);
+        if (matchesDirect && expectedEditDistance <= automaton.MaxEditDistance)
+        {
+            actualDistance.ShouldBe(expectedEditDistance);
+        }
 
         var matchesExecution = automaton.Execute(new TestExecutor(word));
         (matchesDirect == matchesExecution).ShouldBeTrue();

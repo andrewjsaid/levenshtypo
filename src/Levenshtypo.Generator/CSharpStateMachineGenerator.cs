@@ -37,26 +37,28 @@ internal static class CSharpStateMachineGenerator
             throw new NotSupportedException("Finals uses a ulong to represent final state");
         }
 
-        var sb = new StringBuilder();
-        sb.AppendLine(
-            $$"""
-            private readonly struct State : ILevenshtomatonExecutionState<State>
-            {
-
-                private static ReadOnlySpan<short> Transitions => [
-            """);
+        var transitionsData = new List<short>();
+        var distanceData = new List<byte>();
+        var minDistancePayload = new byte[groupMap.Count];
 
         for (int dKey = 0; dKey <= maxDistance; dKey++)
         {
-            var entriesPerState = 1 << dKey;
-            var transitionPayload = new short[groupMap.Count * entriesPerState];
+            var transitionEntriesPerState = 1 << dKey;
+            var transitionPayload = new short[groupMap.Count * transitionEntriesPerState];
             Array.Fill(transitionPayload, (short)-1);
+
+            var distancePayload = new byte[groupMap.Count];
+            Array.Fill(distancePayload, (byte)(~0 & 0xFF));
 
             foreach (var state in states)
             {
+                minDistancePayload[groupMap[state.GroupId]] = state.MinimumError;
+
                 if (state.CharacteristicVectorLength == dKey)
                 {
-                    var stateTransitions = transitions.AsSpan(state.TransitionStartIndex, entriesPerState);
+                    distancePayload[groupMap[state.GroupId]] = (byte)(~state.FinalErrorNegated & 0xFF);
+
+                    var stateTransitions = transitions.AsSpan(state.TransitionStartIndex, transitionEntriesPerState);
                     for (int v = 0; v < stateTransitions.Length; v++)
                     {
                         var transition = stateTransitions[v];
@@ -65,19 +67,24 @@ internal static class CSharpStateMachineGenerator
                             var offset = (ushort)transition.IndexOffset;
                             var nextState = (ushort)groupMap[states[transition.MatchingStateStartIndex].GroupId];
 
-                            transitionPayload[groupMap[state.GroupId] * entriesPerState + v] = (short)((offset << 8) | nextState);
+                            transitionPayload[groupMap[state.GroupId] * transitionEntriesPerState + v] = (short)((offset << 8) | nextState);
                         }
                     }
                 }
             }
 
-            var encodedTransitionPayload = string.Join(", ", transitionPayload.Select(t => t == -1 ? "-1" : ("0x" + t.ToString("X2"))));
-            sb.AppendLine("        " + encodedTransitionPayload + ",");
+            transitionsData.AddRange(transitionPayload);
+            distanceData.AddRange(distancePayload);
         }
 
+        var sb = new StringBuilder();
         sb.AppendLine(
-            """
-                ];
+            $$"""
+            private readonly struct State : ILevenshtomatonExecutionState<State>
+            {
+                private static ReadOnlySpan<short> TransitionsData => [{{string.Join(", ", transitionsData.Select(t => t == -1 ? "-1" : ("0x" + t.ToString("X2"))))}}];
+                private static ReadOnlySpan<byte> DistanceData => [{{string.Join(", ", distanceData.Select(t => "0x" + t.ToString("X2")))}}];
+                private static ReadOnlySpan<byte> MinDistanceData => [{{string.Join(", ", minDistancePayload.Select(t => "0x" + t.ToString("X2")))}}];
             """);
 
         sb.AppendLine(
@@ -116,7 +123,7 @@ internal static class CSharpStateMachineGenerator
                     var dStart = {{groupMap.Count}} * ((1 << vectorLength) - 1);
                     var dOffset = _state * (1 << vectorLength) + vector;
 
-                    var encodedNext = Transitions[dStart + dOffset];
+                    var encodedNext = TransitionsData[dStart + dOffset];
                     
                     if (encodedNext >= 0)
                     {
@@ -148,7 +155,7 @@ internal static class CSharpStateMachineGenerator
             {
                 if (state.CharacteristicVectorLength == dKey)
                 {
-                    if (state.IsFinal)
+                    if (state.FinalErrorNegated != 0)
                     {
                         bitVector |= 1ul << groupMap[state.GroupId];
                     }
@@ -162,8 +169,12 @@ internal static class CSharpStateMachineGenerator
         }
 
         sb.AppendLine(
-            """
+            $$"""
                     });
+                
+                public int Distance => DistanceData[Math.Min({{maxDistance}}, _sRune.Length - _sIndex) * {{groupMap.Count}} + _state];
+
+                public int MinimumDistance => MinDistanceData[_state];
             }
             """);
 

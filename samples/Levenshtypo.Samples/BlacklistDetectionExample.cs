@@ -17,11 +17,11 @@ public class BlacklistDetectionExample
 
     public bool IsBlacklisted(string word)
     {
-        string[] similarWords = _trie.Search(word, maxEditDistance: 2);
-        return similarWords.Any(similarWord => DetailedCompare(similarWord, word));
+        LevenshtrieSearchResult<string>[] searchResults = _trie.Search(word, maxEditDistance: 2);
+        return searchResults.Any(result => DetailedCompare(result.Distance, result.Result, word));
     }
 
-    private bool DetailedCompare(string blacklistedWord, string word)
+    private bool DetailedCompare(int distance, string blacklistedWord, string word)
     {
         // Your custom logic goes here
         return true;

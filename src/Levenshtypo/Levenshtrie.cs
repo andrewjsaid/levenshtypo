@@ -13,10 +13,12 @@ namespace Levenshtypo;
 /// Supports a single value per unique input string.
 /// Does not support modification after creation.
 /// </summary>
-public abstract class Levenshtrie<T> : ILevenshtomatonExecutor<T[]>
+public abstract class Levenshtrie<T> : ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>
 {
 
     private protected Levenshtrie() { }
+
+    private protected abstract bool IgnoreCase { get; }
 
     /// <summary>
     /// Builds a tree from the given associations between strings and values.
@@ -40,32 +42,48 @@ public abstract class Levenshtrie<T> : ILevenshtomatonExecutor<T[]>
 
     /// <summary>
     /// Searches for values with a key at the maximum error distance.
+    /// The results are return in an arbitrary sort order.
     /// </summary>
-    public abstract T[] Search(string text, int maxEditDistance, LevenshtypoMetric metric = LevenshtypoMetric.Levenshtein);
+    public LevenshtrieSearchResult<T>[] Search(string text, int maxEditDistance, LevenshtypoMetric metric = LevenshtypoMetric.Levenshtein)
+    {
+        var automaton = LevenshtomatonFactory.Instance.Construct(text, maxEditDistance, ignoreCase: IgnoreCase, metric: metric);
+        return Search(automaton);
+    }
 
     /// <summary>
     /// Searches for values with a key which is accepted by the specified automaton.
+    /// The results are return in an arbitrary sort order.
     /// </summary>
-    public abstract T[] Search(Levenshtomaton automaton);
+    public LevenshtrieSearchResult<T>[] Search(Levenshtomaton automaton)
+    {
+        if (automaton.IgnoreCase != IgnoreCase)
+        {
+            throw new ArgumentException("Case sensitivity of automaton does not match.");
+        }
+
+        return automaton.Execute(this);
+    }
 
     /// <summary>
     /// Searches for values with a key accepted by the specified search state.
+    /// The results are return in an arbitrary sort order.
     /// </summary>
-    public abstract T[] Search<TSearchState>(TSearchState searcher)
+    public abstract LevenshtrieSearchResult<T>[] Search<TSearchState>(TSearchState searcher)
         where TSearchState : ILevenshtomatonExecutionState<TSearchState>;
 
     /// <summary>
     /// Searches for values with a key accepted by the specified search state.
+    /// The results are return in an arbitrary sort order.
     /// </summary>
-    public T[] Search(LevenshtomatonExecutionState searcher)
+    public LevenshtrieSearchResult<T>[] Search(LevenshtomatonExecutionState searcher)
         => Search<LevenshtomatonExecutionState>(searcher);
 
-    T[] ILevenshtomatonExecutor<T[]>.ExecuteAutomaton<TSearchState>(TSearchState state)
+    LevenshtrieSearchResult<T>[] ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>.ExecuteAutomaton<TSearchState>(TSearchState state)
         => Search(state);
 }
 
 internal sealed class Levenshtrie<T, TCaseSensitivity> :
-    Levenshtrie<T>, ILevenshtomatonExecutor<T[]> where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
+    Levenshtrie<T>, ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]> where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
 {
     private readonly Entry[] _entries;
     private readonly T[] _results;
@@ -78,7 +96,7 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         _tailData = tailData;
     }
 
-    private bool IgnoreCase => typeof(TCaseSensitivity) == typeof(CaseInsensitive);
+    private protected override bool IgnoreCase => typeof(TCaseSensitivity) == typeof(CaseInsensitive);
 
     internal static Levenshtrie<T> Create(IEnumerable<KeyValuePair<string, T>> source)
     {
@@ -323,29 +341,13 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         return false;
     }
 
-    public override T[] Search(string text, int maxEditDistance, LevenshtypoMetric metric = LevenshtypoMetric.Levenshtein)
-    {
-        var automaton = LevenshtomatonFactory.Instance.Construct(text, maxEditDistance, ignoreCase: IgnoreCase, metric: metric);
-        return Search(automaton);
-    }
-
-    public override T[] Search(Levenshtomaton automaton)
-    {
-        if (automaton.IgnoreCase != IgnoreCase)
-        {
-            throw new ArgumentException("Case sensitivity of automaton does not match.");
-        }
-
-        return automaton.Execute(this);
-    }
-
-    public override T[] Search<TSearchState>(TSearchState searcher)
+    public override LevenshtrieSearchResult<T>[] Search<TSearchState>(TSearchState searcher)
     {
         // This algorithm is recursive but that means that there's a risk of StackOverflow.
         // Thus we break recursion at a certain depth.
         const int MaxStackDepth = 20;
 
-        var results = new HashSet<T>();
+        var results = new HashSet<LevenshtrieSearchResult<T>>(LevenshtrieSearchResultComparer<T>.Instance);
         Queue<(int entryIndex, TSearchState searchState)>? processQueue = null;
         TraverseChildrenOf(0, searcher, MaxStackDepth);
 
@@ -368,7 +370,7 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
             if (searchState.IsFinal && entry.ResultIndex >= 0)
             {
-                results.Add(_results[entry.ResultIndex]);
+                results.Add(new LevenshtrieSearchResult<T>(searchState.Distance, _results[entry.ResultIndex]));
             }
 
             var childEntries = _entries.AsSpan(entry.ChildEntriesStartIndex, entry.NumChildren);
@@ -410,10 +412,7 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
             }
         }
     }
-
-    T[] ILevenshtomatonExecutor<T[]>.ExecuteAutomaton<TSearchState>(TSearchState state)
-        => Search(state);
-
+    
     private struct Kvp
     {
         public Kvp(KeyValuePair<string, T> input)

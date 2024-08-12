@@ -18,10 +18,12 @@ public class BooleanCombinationsExample
     public string[] SearchCommon(string a, string b)
     {
         // This returns words within distance 1 of both a and b
-        return _trie.Search(
+        LevenshtrieSearchResult<string>[] searchResults = _trie.Search(
             new AndLevenshtomatonExecutionState(
                 LevenshtomatonFactory.Instance.Construct(a, 1).Start(),
                 LevenshtomatonFactory.Instance.Construct(b, 1).Start()));
+
+        return searchResults.Select(r => r.Result).ToArray();
     }
 
     private struct AndLevenshtomatonExecutionState : ILevenshtomatonExecutionState<AndLevenshtomatonExecutionState>
@@ -50,5 +52,9 @@ public class BooleanCombinationsExample
         }
 
         public bool IsFinal => _state1.IsFinal && _state2.IsFinal;
+
+        public int Distance => _state1.Distance + _state2.Distance;
+
+        public int MinimumDistance => _state1.MinimumDistance + _state2.MinimumDistance;
     }
 }

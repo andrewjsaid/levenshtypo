@@ -38,11 +38,11 @@ These samples and more can be found in the _samples_ directory.
 <summary>Suggest similar words</summary>
 
 ```csharp
-public class TypoSuggestion
+public class TypoSuggestionExample
 {
     private readonly Levenshtrie<string> _trie;
 
-    public TypoSuggestion(IEnumerable<string> words)
+    public TypoSuggestionExample(IEnumerable<string> words)
     {
         _trie = Levenshtrie<string>.Create(
             words.Select(w => new KeyValuePair<string, string>(w, w)),
@@ -51,9 +51,11 @@ public class TypoSuggestion
 
     public string[] GetSimilarWords(string word)
     {
-        // RestrictedEdit adds support for swapping adjacent letters
-        // which is a common typo.
-        return _trie.Search(word, maxEditDistance: 2, metric: LevenshtypoMetric.RestrictedEdit);
+        LevenshtrieSearchResult<string>[] searchResults = _trie.Search(word, maxEditDistance: 2, metric: LevenshtypoMetric.RestrictedEdit);
+        return searchResults
+            .OrderBy(r => r.Distance) // Most likely word first
+            .Select(r => r.Result)
+            .ToArray(); 
     }
 }
 ```
@@ -77,16 +79,17 @@ public class BlacklistDetectionExample
 
     public bool IsBlacklisted(string word)
     {
-        string[] similarWords = _trie.Search(word, maxEditDistance: 2);
-        return similarWords.Any(similarWord => DetailedCompare(similarWord, word));
+        LevenshtrieSearchResult<string>[] searchResults = _trie.Search(word, maxEditDistance: 2);
+        return searchResults.Any(result => DetailedCompare(result.Distance, result.Result, word));
     }
 
-    private bool DetailedCompare(string blacklistedWord, string word)
+    private bool DetailedCompare(int distance, string blacklistedWord, string word)
     {
         // Your custom logic goes here
         return true;
     }
 }
+
 ```
 
 </details>

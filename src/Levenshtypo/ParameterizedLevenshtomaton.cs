@@ -257,6 +257,8 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
                     };
                 }
 
+                var (finalErrorNegated, minimumError) = CalculateErrorStats(multiState, characteristicVectorLength);
+
                 states[dfaStateWriteIndex++] = new DfaState
                 {
 #if DEBUG
@@ -265,7 +267,8 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
                     GroupId = dfaStartIdx,
                     CharacteristicVectorLength = characteristicVectorLength,
                     TransitionStartIndex = transitionStartIndex,
-                    IsFinal = AnyFinal(multiState, characteristicVectorLength)
+                    FinalErrorNegated = finalErrorNegated,
+                    MinimumError = minimumError,
                 };
             }
 
@@ -382,18 +385,29 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
             }
         }
 
-        bool AnyFinal(int[] multiState, int distanceToEnd)
+        (byte finalErrorNegated, byte minimumError) CalculateErrorStats(int[] multiState, int distanceToEnd)
         {
+            var minimumError = maxEditDistance;
+            var finalError = int.MaxValue;
+
             foreach (var stateIndex in multiState)
             {
                 var nfaState = nfaStates[stateIndex];
+
+                minimumError = Math.Min(minimumError, nfaState.Error);
+
                 if (nfaState.Consumed + (maxEditDistance - nfaState.Error) >= distanceToEnd)
                 {
-                    return true;
+                    finalError = Math.Min(finalError, nfaState.Error + (distanceToEnd - nfaState.Consumed));
                 }
             }
 
-            return false;
+            if (finalError == int.MaxValue)
+            {
+                finalError = ~0;
+            }
+
+            return ((byte)~finalError, (byte)minimumError);
         }
     }
 
@@ -453,7 +467,7 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
         for (int i = 0; i < dfaStates.Length; i++)
         {
             DfaState state = dfaStates[i];
-            var color = state.IsFinal ? "blue" : (i < maxCharacteristicVectorLength) ? "green" : "black";
+            var color = state.FinalErrorNegated != 0 ? "blue" : (i < maxCharacteristicVectorLength) ? "green" : "black";
             sb.AppendLine($" \"{state.Name}\" [color = {color}];");
 
             var numCharacteristicVectors = checked((int)(1u << state.CharacteristicVectorLength));
@@ -599,7 +613,8 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
 #endif
         public int GroupId; // Used to avoid infinite loop
         public int CharacteristicVectorLength;
-        public bool IsFinal;
+        public byte FinalErrorNegated; // If we are in the final state, this is the error. Invert the bits for the real value
+        public byte MinimumError; // The minimum error we can reach from this state.
         public int TransitionStartIndex;
     }
 
@@ -642,7 +657,7 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
         Metric = metric;
     }
 
-    public override bool Matches(ReadOnlySpan<char> text) => DefaultMatchesImplementation(text, StartSpecialized());
+    public override bool Matches(ReadOnlySpan<char> text, out int distance) => DefaultMatchesImplementation(text, StartSpecialized(), out distance);
 
     public override T Execute<T>(ILevenshtomatonExecutor<T> executor) => executor.ExecuteAutomaton(StartSpecialized());
 
@@ -659,17 +674,19 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
         private readonly ParameterizedLevenshtomaton<TCaseSensitivity> _automaton;
         private readonly int _stateIndex;
         private readonly int _sIndex;
+        private readonly byte _finalErrorNegated;
 
-        private State(ParameterizedLevenshtomaton<TCaseSensitivity> automaton, int stateIndex, int sIndex)
+        private State(ParameterizedLevenshtomaton<TCaseSensitivity> automaton, int stateIndex, int sIndex, byte finalErrorNegated)
         {
             _automaton = automaton;
             _stateIndex = stateIndex;
             _sIndex = sIndex;
+            _finalErrorNegated = finalErrorNegated;
         }
 
         internal static State Start(ParameterizedLevenshtomaton<TCaseSensitivity> automaton, int stateIndex)
         {
-            return new State(automaton, stateIndex, 0);
+            return new State(automaton, stateIndex, 0, automaton._states[stateIndex].FinalErrorNegated);
         }
 
         public bool MoveNext(Rune c, out State next)
@@ -706,7 +723,9 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
                 Debug.Assert(states[nextStateIndex].GroupId == states[transition.MatchingStateStartIndex].GroupId);
                 Debug.Assert(states[nextStateIndex].CharacteristicVectorLength == nextCharacteristicVectorLength);
 
-                next = new State(automaton, nextStateIndex, _sIndex + transition.IndexOffset);
+                var nextFinalError = states[nextStateIndex].FinalErrorNegated;
+
+                next = new State(automaton, nextStateIndex, _sIndex + transition.IndexOffset, nextFinalError);
                 return true;
             }
 
@@ -714,6 +733,10 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
             return false;
         }
 
-        public bool IsFinal => _automaton._states[_stateIndex].IsFinal;
+        public bool IsFinal => _finalErrorNegated != 0;
+
+        public int Distance => (byte)(~_finalErrorNegated & 0xFF);
+
+        public int MinimumDistance => _automaton._states[_stateIndex].MinimumError;
     }
 }
