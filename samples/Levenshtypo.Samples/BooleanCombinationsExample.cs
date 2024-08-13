@@ -53,7 +53,5 @@ public class BooleanCombinationsExample
         public bool IsFinal => _state1.IsFinal && _state2.IsFinal;
 
         public int Distance => _state1.Distance + _state2.Distance;
-
-        public int MinimumDistance => _state1.MinimumDistance + _state2.MinimumDistance;
     }
 }

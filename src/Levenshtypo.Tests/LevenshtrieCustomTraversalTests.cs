@@ -97,8 +97,6 @@ public class LevenshtrieCustomTraversalTests
         public override bool IsFinal => _state1.IsFinal && _state2.IsFinal;
 
         public override int Distance => _state1.Distance + _state2.Distance;
-
-        public override int MinimumDistance => _state1.MinimumDistance + _state2.MinimumDistance;
     }
 
     private class OrLevenshtomatonExecutionState : LevenshtomatonExecutionState
@@ -152,7 +150,5 @@ public class LevenshtrieCustomTraversalTests
         public override bool IsFinal => _state1?.IsFinal == true || _state2?.IsFinal == true;
 
         public override int Distance => Math.Min(_state1?.Distance ?? int.MaxValue, _state2?.Distance ?? int.MaxValue);
-
-        public override int MinimumDistance => Math.Min(_state1?.MinimumDistance ?? int.MaxValue, _state2?.MinimumDistance ?? int.MaxValue);
     }
 }

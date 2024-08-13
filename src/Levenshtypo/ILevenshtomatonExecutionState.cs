@@ -33,12 +33,6 @@ public interface ILevenshtomatonExecutionState<TSelf> where TSelf : ILevenshtoma
     /// the underlying string with the characters consumed so far.
     /// </summary>
     int Distance { get; }
-
-    /// <summary>
-    /// For all states, this is the minimum edit distance possible
-    /// from this state.
-    /// </summary>
-    int MinimumDistance { get; }
 }
 
 /// <summary>
@@ -55,8 +49,6 @@ public abstract class LevenshtomatonExecutionState : ILevenshtomatonExecutionSta
     public abstract bool IsFinal { get; }
 
     public abstract int Distance { get; }
-
-    public abstract int MinimumDistance { get; }
 
     /// <summary>
     /// Wraps a struct implementation of <see cref="ILevenshtomatonExecutionState{TSelf}"/> into a class.
@@ -86,6 +78,4 @@ internal sealed class StructWrappedLevenshtomatonExecutionState<TState> : Levens
     public override bool IsFinal => _state.IsFinal;
 
     public override int Distance => _state.Distance;
-
-    public override int MinimumDistance => _state.MinimumDistance;
 }

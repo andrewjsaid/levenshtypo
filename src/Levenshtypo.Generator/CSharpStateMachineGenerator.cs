@@ -39,7 +39,6 @@ internal static class CSharpStateMachineGenerator
 
         var transitionsData = new List<short>();
         var distanceData = new List<byte>();
-        var minDistancePayload = new byte[groupMap.Count];
 
         for (int dKey = 0; dKey <= maxDistance; dKey++)
         {
@@ -52,8 +51,6 @@ internal static class CSharpStateMachineGenerator
 
             foreach (var state in states)
             {
-                minDistancePayload[groupMap[state.GroupId]] = state.MinimumError;
-
                 if (state.CharacteristicVectorLength == dKey)
                 {
                     distancePayload[groupMap[state.GroupId]] = (byte)(~state.FinalErrorNegated & 0xFF);
@@ -84,7 +81,6 @@ internal static class CSharpStateMachineGenerator
             {
                 private static ReadOnlySpan<short> TransitionsData => [{{string.Join(", ", transitionsData.Select(t => t == -1 ? "-1" : ("0x" + t.ToString("X2"))))}}];
                 private static ReadOnlySpan<byte> DistanceData => [{{string.Join(", ", distanceData.Select(t => "0x" + t.ToString("X2")))}}];
-                private static ReadOnlySpan<byte> MinDistanceData => [{{string.Join(", ", minDistancePayload.Select(t => "0x" + t.ToString("X2")))}}];
             """);
 
         sb.AppendLine(

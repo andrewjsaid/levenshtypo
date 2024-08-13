@@ -6,7 +6,6 @@ abstract Levenshtypo.Levenshtomaton.Metric.get -> Levenshtypo.LevenshtypoMetric
 abstract Levenshtypo.Levenshtomaton.Start() -> Levenshtypo.LevenshtomatonExecutionState!
 abstract Levenshtypo.LevenshtomatonExecutionState.Distance.get -> int
 abstract Levenshtypo.LevenshtomatonExecutionState.IsFinal.get -> bool
-abstract Levenshtypo.LevenshtomatonExecutionState.MinimumDistance.get -> int
 abstract Levenshtypo.LevenshtomatonExecutionState.MoveNext(System.Text.Rune c, out Levenshtypo.LevenshtomatonExecutionState! next) -> bool
 abstract Levenshtypo.Levenshtrie<T>.EnumerateSearch<TSearchState>(TSearchState searcher) -> System.Collections.Generic.IEnumerable<Levenshtypo.LevenshtrieSearchResult<T>>!
 abstract Levenshtypo.Levenshtrie<T>.Search<TSearchState>(TSearchState searcher) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
@@ -15,7 +14,6 @@ const Levenshtypo.LevenshtomatonFactory.MaxEditDistance = 3 -> int
 Levenshtypo.ILevenshtomatonExecutionState<TSelf>
 Levenshtypo.ILevenshtomatonExecutionState<TSelf>.Distance.get -> int
 Levenshtypo.ILevenshtomatonExecutionState<TSelf>.IsFinal.get -> bool
-Levenshtypo.ILevenshtomatonExecutionState<TSelf>.MinimumDistance.get -> int
 Levenshtypo.ILevenshtomatonExecutionState<TSelf>.MoveNext(System.Text.Rune c, out TSelf next) -> bool
 Levenshtypo.ILevenshtomatonExecutor<T>
 Levenshtypo.ILevenshtomatonExecutor<T>.ExecuteAutomaton<TState>(TState executionState) -> T

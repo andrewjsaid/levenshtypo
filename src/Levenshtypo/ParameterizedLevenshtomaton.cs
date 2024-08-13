@@ -267,8 +267,7 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
 #endif
                     CharacteristicVectorLength = (short)characteristicVectorLength,
                     TransitionStartIndex = transitionStartIndex,
-                    FinalErrorNegated = finalErrorNegated,
-                    MinimumError = minimumError,
+                    FinalErrorNegated = finalErrorNegated
                 };
             }
 
@@ -611,7 +610,6 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
 #endif
         public short CharacteristicVectorLength;
         public byte FinalErrorNegated; // If we are in the final state, this is the error. Invert the bits for the real value
-        public byte MinimumError; // The minimum error we can reach from this state.
         public int TransitionStartIndex;
     }
 
@@ -735,7 +733,5 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
         public bool IsFinal => _finalErrorNegated != 0;
 
         public int Distance => (byte)(~_finalErrorNegated & 0xFF);
-
-        public int MinimumDistance => _automaton._states[_stateIndex].MinimumError;
     }
 }
