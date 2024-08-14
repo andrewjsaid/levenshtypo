@@ -55,7 +55,7 @@ internal class Distance1RestrictedEditLevenshtomaton<TCaseSensitivity> : Levensh
             var vectorLength = Math.Min(3, sRune.Length - sIndex);
 
             var vector = 0;
-            foreach (var sChar in sRune.AsSpan().Slice(sIndex, vectorLength))
+            foreach (var sChar in sRune.AsSpan(sIndex, vectorLength))
             {
                 vector <<= 1;
                 if (default(TCaseSensitivity).Equals(sChar, c))

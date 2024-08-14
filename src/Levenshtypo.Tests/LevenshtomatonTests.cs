@@ -73,6 +73,42 @@ public class LevenshtomatonTests
         }
     }
 
+    [Fact]
+    public void NumberTests()
+    {
+        var numbers = 
+            Enumerable.Range(0, 100_000)
+            .Select(i => i.ToString())
+            .Where(n => n.All(c => c is >= '0' and <= '5')) // 5 digits is sufficient to avoid repetition
+            .ToArray();
+
+        const int Skip = 139; // Otherwise will take too long
+
+        for (int iN1 = 0; iN1 < numbers.Length; iN1++)
+        {
+            string? n1 = numbers[iN1];
+
+            foreach (var metric in new[] { LevenshtypoMetric.Levenshtein, LevenshtypoMetric.RestrictedEdit })
+            {
+                var automata = Construct(n1, ignoreCase: false, metric: metric);
+
+                for (int iN2 = iN1; iN2 < numbers.Length; iN2 += Skip)
+                {
+                    string? n2 = numbers[iN2];
+                    var distance = LevenshteinDistance.Calculate(n1, n2, ignoreCase: false, metric: metric);
+
+                    foreach (var automaton in automata)
+                    {
+                        Matches(automaton, n2, distance)
+                            .ShouldBe(distance <= automaton.MaxEditDistance, 
+                            $"Distance: {automaton.MaxEditDistance}, Type: {automaton}, N1: {n1}, N2: {n2}");
+                    }
+                }
+            }
+
+        }
+    }
+
     [Theory]
     [InlineData("abcd")]
     [InlineData("bbbbbbbb")]
