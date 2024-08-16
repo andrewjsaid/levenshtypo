@@ -8,12 +8,10 @@ namespace Levenshtypo;
 
 internal class Distance2LevenshteinLevenshtomaton<TCaseSensitivity> : Levenshtomaton where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
 {
-    private string _s;
     private Rune[] _sRune;
 
     public Distance2LevenshteinLevenshtomaton(string s) : base(s, 2)
     {
-        _s = s;
         _sRune = s.EnumerateRunes().ToArray();
     }
 

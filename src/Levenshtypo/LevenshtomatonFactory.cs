@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 
 namespace Levenshtypo;
 
@@ -10,12 +9,8 @@ namespace Levenshtypo;
 /// </summary>
 public sealed class LevenshtomatonFactory
 {
-    /// <summary>
-    /// Automatons with Levenshtein distance greater than this value are not supported.
-    /// </summary>
-    public const int MaxEditDistance = 3;
-
-    private readonly ConcurrentDictionary<TemplateKey, ParameterizedLevenshtomaton.Template> _templates = new ();
+    private ParameterizedLevenshtomaton.Template? _d3Levenshtein;
+    private ParameterizedLevenshtomaton.Template? _d3RestrictedEdit;
 
     internal LevenshtomatonFactory() { }
 
@@ -31,7 +26,7 @@ public sealed class LevenshtomatonFactory
     /// <param name="metric">The metric.</param>
     public Levenshtomaton Construct(string s, int maxEditDistance, bool ignoreCase = false, LevenshtypoMetric metric = LevenshtypoMetric.Levenshtein)
     {
-        if (maxEditDistance is > MaxEditDistance or < 0)
+        if (maxEditDistance < 0)
         {
             // The limitation is purely for practical purposes as the number of states can truly explode.
             throw new ArgumentOutOfRangeException(nameof(maxEditDistance));
@@ -69,9 +64,37 @@ public sealed class LevenshtomatonFactory
             case (2, LevenshtypoMetric.RestrictedEdit, true):
                 return new Distance2RestrictedEditLevenshtomaton<CaseInsensitive>(s);
 
+            case (3, LevenshtypoMetric.Levenshtein, _):
+                _d3Levenshtein ??= ParameterizedLevenshtomaton.CreateTemplate(maxEditDistance, metric);
+                return _d3Levenshtein.Instantiate(s, ignoreCase);
+
+            case (3, LevenshtypoMetric.RestrictedEdit, _):
+                _d3RestrictedEdit ??= ParameterizedLevenshtomaton.CreateTemplate(maxEditDistance, metric);
+                return _d3RestrictedEdit.Instantiate(s, ignoreCase);
+
+#if NET8_0_OR_GREATER
+            case ( >= 4 and <= 30, LevenshtypoMetric.Levenshtein, false):
+                return new BitwiseLevenshteinLevenshtomaton<CaseSensitive>(s, maxEditDistance);
+
+            case ( >= 4 and <= 30, LevenshtypoMetric.Levenshtein, true):
+                return new BitwiseLevenshteinLevenshtomaton<CaseInsensitive>(s, maxEditDistance);
+
+            case ( >= 4 and <= 30, LevenshtypoMetric.RestrictedEdit, false):
+                return new BitwiseRestrictedEditLevenshtomaton<CaseSensitive>(s, maxEditDistance);
+
+            case ( >= 4 and <= 30, LevenshtypoMetric.RestrictedEdit, true):
+                return new BitwiseRestrictedEditLevenshtomaton<CaseInsensitive>(s, maxEditDistance);
+#endif
+
             default:
-                var template = _templates.GetOrAdd(new(maxEditDistance, metric), key => ParameterizedLevenshtomaton.CreateTemplate(key.MaxEditDistance, key.Metric));
-                return template.Instantiate(s, ignoreCase);
+                if (!ignoreCase)
+                {
+                    return new FallbackLevenshtomaton<CaseSensitive>(s, metric, maxEditDistance);
+                }
+                else
+                {
+                    return new FallbackLevenshtomaton<CaseInsensitive>(s, metric, maxEditDistance);
+                }
         }
     }
 

@@ -129,7 +129,7 @@ public static class LevenshteinDistance
             d1 = rentedArr.AsSpan(distancesLength, distancesLength);
         }
 
-        for (int i = 0; i < distancesLength; i++)
+        for (int i = 0; i < d0.Length; i++)
         {
             d0[i] = i;
         }

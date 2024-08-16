@@ -240,7 +240,7 @@ The English Language dataset used in the benchmarks contains approximately 465,0
 
 ## References
 
-The algorithm in this library is based on the 2002 paper
+The ParameterizedLevenshtomaton algorithm in this library is based on the 2002 paper
 _Fast String Correction with Levenshtein-Automata_ by Klaus Schulz and Stoyan Mihov.
 
 I used the following blog posts to further help understand the algorithm.

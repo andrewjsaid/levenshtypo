@@ -434,7 +434,7 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
         for (int i = 0; i < nfaStates.Length; i++)
         {
             NfaState state = nfaStates[i];
-            if(state.Name is null)
+            if (state.Name is null)
             {
                 continue;
             }
@@ -630,9 +630,7 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
 {
     private readonly DfaState[] _states;
     private readonly DfaTransition[] _transitions;
-    private readonly string _s;
     private readonly Rune[] _sRune;
-    private readonly int _maxEditDistance;
     private readonly int _startStateIndex;
 
     internal ParameterizedLevenshtomaton(
@@ -645,9 +643,7 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
     {
         _states = states;
         _transitions = transitions;
-        _s = s;
         _sRune = s.EnumerateRunes().ToArray();
-        _maxEditDistance = maxEditDistance;
         _startStateIndex = startStateIndex;
         Metric = metric;
     }
@@ -666,36 +662,51 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
 
     private readonly struct State : ILevenshtomatonExecutionState<State>
     {
-        private readonly ParameterizedLevenshtomaton<TCaseSensitivity> _automaton;
-        private readonly int _stateIndex;
+        private readonly Rune[] _sRune;
         private readonly int _sIndex;
+        private readonly int _maxVectorLength;
+        private readonly DfaState[] _states;
+        private readonly DfaTransition[] _transitions;
+        private readonly int _stateIndex;
         private readonly byte _finalErrorNegated;
 
-        private State(ParameterizedLevenshtomaton<TCaseSensitivity> automaton, int stateIndex, int sIndex, byte finalErrorNegated)
+        private State(
+            Rune[] sRune,
+            int sIndex,
+            int maxVectorLength,
+            DfaState[] states,
+            DfaTransition[] transitions,
+            int stateIndex,
+            byte finalErrorNegated)
         {
-            _automaton = automaton;
-            _stateIndex = stateIndex;
+            _sRune = sRune;
             _sIndex = sIndex;
+            _maxVectorLength = maxVectorLength;
+            _states = states;
+            _transitions = transitions;
+            _stateIndex = stateIndex;
             _finalErrorNegated = finalErrorNegated;
         }
 
         internal static State Start(ParameterizedLevenshtomaton<TCaseSensitivity> automaton, int stateIndex)
         {
-            return new State(automaton, stateIndex, 0, automaton._states[stateIndex].FinalErrorNegated);
+            return new State(
+                automaton._sRune, 
+                0,
+                CalculateMaxCharacterizedVectorLength(automaton.MaxEditDistance),
+                automaton._states,
+                automaton._transitions,
+                stateIndex, 
+                automaton._states[stateIndex].FinalErrorNegated);
         }
 
         public bool MoveNext(Rune c, out State next)
         {
-            var automaton = _automaton;
-            Debug.Assert(_automaton != null);
-
-            var sRune = automaton._sRune;
+            var sRune = _sRune;
             var sIndex = _sIndex;
-            var states = _automaton._states;
-            var maxEditDistance = automaton._maxEditDistance;
+            var states = _states;
 
-            var maxCharacteristicVectorLength = CalculateMaxCharacterizedVectorLength(maxEditDistance);
-            var characteristicVectorLength = Math.Min(maxCharacteristicVectorLength, sRune.Length - sIndex);
+            var characteristicVectorLength = Math.Min(_maxVectorLength, sRune.Length - sIndex);
 
             var characteristicVector = 0u;
             foreach (var sChar in sRune.AsSpan(sIndex, characteristicVectorLength))
@@ -708,8 +719,8 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
             }
 
             var state = states[_stateIndex];
-            var transition = automaton._transitions[state.TransitionStartIndex + characteristicVector];
-            var nextCharacteristicVectorLength = Math.Min(maxCharacteristicVectorLength, sRune.Length - sIndex - transition.IndexOffset);
+            var transition = _transitions[state.TransitionStartIndex + characteristicVector];
+            var nextCharacteristicVectorLength = Math.Min(_maxVectorLength, sRune.Length - sIndex - transition.IndexOffset);
 
             if (transition.MatchingStateStartIndex != DfaTransition.NoMatchingState)
             {
@@ -722,7 +733,14 @@ internal sealed class ParameterizedLevenshtomaton<TCaseSensitivity> : Parameteri
 
                 var nextFinalError = states[nextStateIndex].FinalErrorNegated;
 
-                next = new State(automaton, nextStateIndex, _sIndex + transition.IndexOffset, nextFinalError);
+                next = new State(
+                    _sRune,
+                    _sIndex + transition.IndexOffset,
+                    _maxVectorLength,
+                    _states,
+                    _transitions,
+                    nextStateIndex, 
+                    nextFinalError);
                 return true;
             }
 
