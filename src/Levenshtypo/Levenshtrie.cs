@@ -227,37 +227,6 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
             int resultIndex = -1;
             var tailDataIndex = tailData.Count;
-
-            if (group.Length == 1
-                && group[0].NextReadIndex != 0
-                && group[0].Key.Length - group[0].NextReadIndex > 0)
-            {
-                resultIndex = results.Count;
-                results.Add(group[0].Value);
-
-                var entryTailData = group[0].Key.AsSpan(group[0].NextReadIndex);
-
-                // In .NET 9 we can use alternate lookup to re-use tail data.
-
-#if NET8_0_OR_GREATER
-                tailData.AddRange(entryTailData);
-#else
-                tailData.AddRange(entryTailData.ToArray());
-#endif
-
-                entries[toEntryIndex] = new Entry
-                {
-                    EntryValue = nodeValue,
-                    ChildEntriesStartIndex = 0,
-                    NumChildren = 0,
-                    ResultIndex = resultIndex,
-                    TailDataIndex = tailDataIndex,
-                    TailDataLength = entryTailData.Length
-                };
-
-                return;
-            }
-
             var firstItemNextReadIndex = group[0].NextReadIndex;
             var lastCharsRead = 0;
             int tailDataLength = 0;
