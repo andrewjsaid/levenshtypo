@@ -487,19 +487,6 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
                     }
 
                     printTransitions.Add($"{symbol}+{transition.IndexOffset}");
-
-                    /*
-                     * This connection exists but messes up the graph
-                    if (transitionIndex == 0)
-                    {
-                        if (!printTransitionsMap.TryGetValue(transition.MatchingStateStartIndex + 1, out printTransitions))
-                        {
-                            printTransitionsMap.Add(transition.MatchingStateStartIndex + 1, printTransitions = new());
-                        }
-
-                        printTransitions.Add($"{symbol}+{transition.IndexOffset}_alt");
-                    }
-                    */
                 }
             }
 

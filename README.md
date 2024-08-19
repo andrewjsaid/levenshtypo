@@ -26,7 +26,9 @@ IEnumerable<KeyValuePair<string, object>> dataset = ...;
 Levenshtrie<object> levenshtrie = Levenshtrie<object>.Create(dataset);
 
 // Search the dataset for keys with edit distance 2 from "hello"
-object[] results = levenshtrie.Search("hello", 2);
+LevenshtrieSearchResult<object>[] results = levenshtrie.Search("hello", 2);
+
+// Each LevenshtrieSearchResult is (int Distance, T Result)
 ```
 
 
@@ -184,11 +186,6 @@ public class BooleanCombinationsExample
 ```
 
 </details>
-
-## Limitations
-
-- No custom cultures (so far).
-- Maximum Levenshtein Distance of 3.
 
 ## Performance
 
