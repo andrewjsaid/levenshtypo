@@ -35,177 +35,26 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
     private protected override bool IgnoreCase => typeof(TCaseSensitivity) == typeof(CaseInsensitive);
 
-    private struct CreationQueueEntry
-    {
-        public int EntryIndex;
-        public Rune Value;
-        public int GroupIndex;
-        public int GroupLength;
-        public int NextSiblingIndex;
-    }
-
     internal static Levenshtrie<T> Create(IEnumerable<KeyValuePair<string, T>> source)
     {
-        var flatSource = source.Select(s => new InputKvp(s)).ToArray();
-
-        const int ArbitraryMultiplicationFactor = 5;
-
-        var inputKvps = new InputKvp[flatSource.Length];
-        for (int i = 0; i < flatSource.Length; i++)
+        var root = new Entry
         {
-            inputKvps[i].Key = flatSource[i].Key;
-            inputKvps[i].Value = flatSource[i].Value;
+            EntryValue = Rune.ReplacementChar,
+            ResultIndex = NoIndex,
+            FirstChildEntryIndex = NoIndex,
+            TailDataIndex = NoIndex,
+            NextSiblingEntryIndex = NoIndex,
+            TailDataLength = 0
+        };
+
+        var trie = new Levenshtrie<T, TCaseSensitivity>([root], [], []);
+
+        foreach (var (key, value) in source)
+        {
+            trie.Add(key, value);
         }
 
-        var entries = new List<Entry>(flatSource.Length * ArbitraryMultiplicationFactor);
-        var results = new List<T>(flatSource.Length);
-        var tailData = new List<char>(flatSource.Length * ArbitraryMultiplicationFactor);
-        var processQueue = new Queue<CreationQueueEntry>();
-
-        Array.Sort(flatSource, (a, b) => default(TCaseSensitivity).KeyComparer.Compare(a.Key, b.Key));
-
-        if (flatSource.Length > 0)
-        {
-            entries.Add(new Entry());
-
-            processQueue.Enqueue(new CreationQueueEntry
-            {
-                EntryIndex = 0,
-                Value = Rune.ReplacementChar,
-                GroupIndex = 0,
-                GroupLength = flatSource.Length,
-                NextSiblingIndex = NoIndex
-            });
-
-            while (processQueue.Count > 0)
-            {
-                AppendChildren(processQueue.Dequeue());
-            }
-        }
-        else
-        {
-            entries.Add(new Entry
-            {
-                EntryValue = Rune.ReplacementChar,
-                ResultIndex = NoIndex,
-                FirstChildEntryIndex = NoIndex,
-                TailDataIndex = NoIndex,
-                NextSiblingEntryIndex = NoIndex,
-                TailDataLength = 0
-            });
-        }
-
-        return new Levenshtrie<T, TCaseSensitivity>(entries.ToArray(), results.ToArray(), tailData.ToArray());
-
-        void AppendChildren(CreationQueueEntry processEntry)
-        {
-            var group = flatSource.AsSpan(processEntry.GroupIndex, processEntry.GroupLength);
-
-            int resultIndex = NoIndex;
-            var tailDataIndex = tailData.Count;
-            var firstItemNextReadIndex = group[0].NextReadIndex;
-            var lastCharsRead = 0;
-            int tailDataLength = 0;
-            var discriminatorOffset = 0;
-            var childGroups = new List<(Rune rune, int rangeStartIndex, int rangeEndIndexExcl)>();
-            do
-            {
-                discriminatorOffset++;
-
-                childGroups.Clear();
-
-                Rune currentDiscriminator = default;
-                var currentRangeStartIndex = 0;
-                var currentRangeEndIndexExcl = 0;
-
-                tailDataLength += lastCharsRead;
-                var isFirst = true;
-
-                for (var gIndex = 0; gIndex < group.Length; gIndex++)
-                {
-                    ref var item = ref group[gIndex];
-                    if (item.Key.Length == item.NextReadIndex)
-                    {
-                        if (resultIndex != NoIndex)
-                        {
-                            throw new ArgumentException("May not use this data structure with duplicate keys.", nameof(source));
-                        }
-
-                        resultIndex = results.Count;
-                        results.Add(item.Value);
-                    }
-                    else
-                    {
-                        Rune.DecodeFromUtf16(item.Key.AsSpan(item.NextReadIndex), out var discriminator, out var charsRead);
-                        item.NextReadIndex += charsRead;
-
-                        if (isFirst)
-                        {
-                            lastCharsRead = charsRead;
-                        }
-
-                        if (default(TCaseSensitivity).Equals(discriminator, currentDiscriminator))
-                        {
-                            currentRangeEndIndexExcl = gIndex + 1;
-                        }
-                        else
-                        {
-                            if (currentRangeStartIndex != 0 || currentRangeEndIndexExcl != 0)
-                            {
-                                childGroups.Add((currentDiscriminator, currentRangeStartIndex, currentRangeEndIndexExcl));
-                            }
-                            currentRangeStartIndex = gIndex;
-                            currentRangeEndIndexExcl = gIndex + 1;
-                            currentDiscriminator = discriminator;
-                        }
-                    }
-                }
-
-                if (currentRangeStartIndex != 0 || currentRangeEndIndexExcl != 0)
-                {
-                    childGroups.Add((currentDiscriminator, currentRangeStartIndex, currentRangeEndIndexExcl));
-                }
-
-            } while (resultIndex == NoIndex && childGroups.Count == 1 && firstItemNextReadIndex > 0);
-
-            if (tailDataLength > 0)
-            {
-                var entryTailData = group[0].Key.AsSpan(firstItemNextReadIndex, tailDataLength);
-
-#if NET8_0_OR_GREATER
-                tailData.AddRange(entryTailData);
-#else
-                tailData.AddRange(entryTailData.ToArray());
-#endif
-            }
-
-            int childEntriesStartIndex = entries.Count;
-
-            for (int i = 0; i < childGroups.Count; i++)
-            {
-                var (entryDiscriminator, rangeStartIndex, rangeEndIndexExcl) = childGroups[i];
-
-                entries.Add(new Entry());
-                processQueue.Enqueue(new CreationQueueEntry
-                {
-                    EntryIndex = entries.Count - 1,
-                    Value = entryDiscriminator,
-                    GroupIndex = processEntry.GroupIndex + rangeStartIndex,
-                    GroupLength = rangeEndIndexExcl - rangeStartIndex,
-                    NextSiblingIndex = i == childGroups.Count - 1 ? NoIndex : entries.Count
-                });
-            }
-
-            entries[processEntry.EntryIndex] = new Entry
-            {
-                EntryValue = processEntry.Value,
-                ResultIndex = resultIndex,
-                FirstChildEntryIndex = childGroups.Count == 0 ? NoIndex : childEntriesStartIndex,
-                NextSiblingEntryIndex = processEntry.NextSiblingIndex,
-                TailDataIndex = tailDataLength == 0 ? NoIndex : tailDataIndex,
-                TailDataLength = tailDataLength
-            };
-        }
+        return trie;
     }
 
     private bool SearchNode<TSearchState>(in Entry entry, TSearchState searchState, out TSearchState nextSearchState)
@@ -236,24 +85,51 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
     public override bool TryGetValue(string key, [MaybeNullWhen(false)] out T value)
     {
         var entries = _entries;
-        ref readonly var entry = ref entries[0];
 
-        var executionState = DirectState.Start(key);
+        ref readonly var entry = ref _entries[0];
+        var keySpan = key.AsSpan();
 
-        while (!executionState.IsFinal)
+        while (keySpan.Length > 0)
         {
+            Rune.DecodeFromUtf16(keySpan, out var nextRune, out var charsConsumed);
+            keySpan = keySpan[charsConsumed..];
+
             var found = false;
-
             var nextChildEntryIndex = entry.FirstChildEntryIndex;
-
-            while (nextChildEntryIndex >= 0)
+            while (nextChildEntryIndex != NoIndex)
             {
-                entry = ref entries[nextChildEntryIndex];
+                entry = ref _entries[nextChildEntryIndex];
 
-                if (SearchNode(in entry, executionState, out var nextExecutionState))
+                if (default(TCaseSensitivity).Equals(entry.EntryValue, nextRune))
                 {
-                    executionState = nextExecutionState;
                     found = true;
+
+                    var entryTailDataLength = entry.TailDataLength;
+                    if (entryTailDataLength > 0)
+                    {
+                        var tailData = _tailData.AsSpan(entry.TailDataIndex, entry.TailDataLength);
+                        while (tailData.Length > 0 && keySpan.Length > 0)
+                        {
+                            Rune.DecodeFromUtf16(keySpan, out nextRune, out charsConsumed);
+                            keySpan = keySpan[charsConsumed..];
+
+                            Rune.DecodeFromUtf16(tailData, out var tailRune, out charsConsumed);
+                            tailData = tailData[charsConsumed..];
+
+                            if (!default(TCaseSensitivity).Equals(nextRune, tailRune))
+                            {
+                                found = false;
+                                break;
+                            }
+                        }
+
+                        if (tailData.Length > 0)
+                        {
+                            // We've consumed the key without consuming the tail data
+                            found = false;
+                        }
+                    }
+
                     break;
                 }
 
@@ -436,44 +312,75 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         EnsureEntriesHasEmptySlots(2);
 
         var entries = _entries;
-        ref var entry = ref entries[0];
+        ref var entry = ref _entries[0];
+        var keySpan = key.AsSpan();
 
-        var executionState = DirectState.Start(key);
-
-        while (!executionState.IsFinal)
+        while (keySpan.Length > 0)
         {
+            Rune.DecodeFromUtf16(keySpan, out var nextRune, out var charsConsumed);
+            keySpan = keySpan[charsConsumed..];
+
             var found = false;
 
             var nextChildEntryIndex = entry.FirstChildEntryIndex;
-
-            while (nextChildEntryIndex >= 0)
+            while (nextChildEntryIndex != NoIndex)
             {
-                ref var childEntry = ref entries[nextChildEntryIndex];
+                ref var childEntry = ref _entries[nextChildEntryIndex];
 
-                if (SearchNode(in childEntry, executionState, out var nextExecutionState))
+                if (default(TCaseSensitivity).Equals(childEntry.EntryValue, nextRune))
                 {
                     entry = ref childEntry;
-                    executionState = nextExecutionState;
                     found = true;
+
+                    var isBranch = true;
+                    var charsMatched = nextRune.Utf16SequenceLength;
+
+                    var entryTailDataLength = childEntry.TailDataLength;
+                    if (entryTailDataLength > 0)
+                    {
+                        var tailData = _tailData.AsSpan(childEntry.TailDataIndex, childEntry.TailDataLength);
+                        while (tailData.Length > 0 && keySpan.Length > 0)
+                        {
+                            Rune.DecodeFromUtf16(keySpan, out nextRune, out charsConsumed);
+                            keySpan = keySpan[charsConsumed..];
+
+                            Rune.DecodeFromUtf16(tailData, out var tailRune, out charsConsumed);
+                            tailData = tailData[charsConsumed..];
+
+                            if (!default(TCaseSensitivity).Equals(nextRune, tailRune))
+                            {
+                                found = false;
+                                break;
+                            }
+
+                            charsMatched += charsConsumed;
+                        }
+
+                        if (found && tailData.Length > 0)
+                        {
+                            // We've consumed the key without consuming the tail data
+                            found = false;
+                            isBranch = false;
+                        }
+                    }
+
+                    if (!found)
+                    {
+                        if (!isBranch)
+                        {
+                            // The new node is along this head / tail data
+                            Branch(ref childEntry, charsMatched, null, [], value);
+                        }
+                        else
+                        {
+                            // The new node branches off at some point along this head / tail data
+                            Branch(ref childEntry, charsMatched, nextRune, keySpan, value);
+                        }
+
+                        return;
+                    }
+
                     break;
-                }
-
-
-                var sharedChars = nextExecutionState.NumCharsMatched - executionState.NumCharsMatched;
-                if (sharedChars > 0)
-                {
-                    if (nextExecutionState.IsFinal)
-                    {
-                        // The new node is along this head / tail data
-                        Debug.Assert(nextExecutionState.NextRune == Rune.ReplacementChar);
-                        Branch(ref childEntry, sharedChars, null, [], value);
-                    }
-                    else
-                    {
-                        // The new node branches off at some point along this head / tail data
-                        Branch(ref childEntry, sharedChars, nextExecutionState.NextRune, key.AsSpan(nextExecutionState.UnmatchedOffset), value);
-                    }
-                    return;
                 }
 
                 nextChildEntryIndex = childEntry.NextSiblingEntryIndex;
@@ -481,12 +388,11 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
             if (!found)
             {
-                // Add a new child entry as a direct child of this one.
                 Branch(
                     ref entry,
                     entry.EntryValue.Utf16SequenceLength + entry.TailDataLength,
-                    executionState.NextRune,
-                    key.AsSpan(executionState.UnmatchedOffset),
+                    nextRune,
+                    keySpan,
                     value);
                 return;
             }
@@ -516,24 +422,50 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
     public override void Remove(string key)
     {
         var entries = _entries;
-        ref var entry = ref entries[0];
 
-        var executionState = DirectState.Start(key);
+        ref var entry = ref _entries[0];
+        var keySpan = key.AsSpan();
 
-        while (!executionState.IsFinal)
+        while (keySpan.Length > 0)
         {
+            Rune.DecodeFromUtf16(keySpan, out var nextRune, out var charsConsumed);
+            keySpan = keySpan[charsConsumed..];
+
             var found = false;
-
             var nextChildEntryIndex = entry.FirstChildEntryIndex;
-
-            while (nextChildEntryIndex >= 0)
+            while (nextChildEntryIndex != NoIndex)
             {
-                entry = ref entries[nextChildEntryIndex];
+                entry = ref _entries[nextChildEntryIndex];
 
-                if (SearchNode(in entry, executionState, out var nextExecutionState))
+                if (default(TCaseSensitivity).Equals(entry.EntryValue, nextRune))
                 {
-                    executionState = nextExecutionState;
                     found = true;
+
+                    var entryTailDataLength = entry.TailDataLength;
+                    if (entryTailDataLength > 0)
+                    {
+                        var tailData = _tailData.AsSpan(entry.TailDataIndex, entry.TailDataLength);
+                        while (tailData.Length > 0 && keySpan.Length > 0)
+                        {
+                            Rune.DecodeFromUtf16(keySpan, out nextRune, out charsConsumed);
+                            keySpan = keySpan[charsConsumed..];
+
+                            Rune.DecodeFromUtf16(tailData, out var tailRune, out charsConsumed);
+                            tailData = tailData[charsConsumed..];
+
+                            if (!default(TCaseSensitivity).Equals(nextRune, tailRune))
+                            {
+                                return;
+                            }
+                        }
+
+                        if (tailData.Length > 0)
+                        {
+                            // We've consumed the key without consuming the tail data
+                            return;
+                        }
+                    }
+
                     break;
                 }
 
@@ -688,68 +620,6 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
             < 16 => 16,
             _ => currentSize * 2
         };
-
-    private readonly struct DirectState : ILevenshtomatonExecutionState<DirectState>
-    {
-        private readonly string _s;
-        private readonly int _sIndex;
-        private readonly Rune _nextRune;
-
-        private DirectState(string s, int sIndex, Rune nextRune)
-        {
-            _s = s;
-            _sIndex = sIndex;
-            _nextRune = nextRune;
-        }
-
-        public static DirectState Start(string s)
-        {
-            Rune.DecodeFromUtf16(s, out var sNext, out _);
-            return new DirectState(s, 0, sNext);
-        }
-
-        public bool MoveNext(Rune c, out DirectState next)
-        {
-            var s = _s;
-            var sIndex = _sIndex;
-
-            if (sIndex < s.Length && default(TCaseSensitivity).Equals(_nextRune, c))
-            {
-                var prevConsumed = _nextRune.IsBmp ? 1 : 2;
-                var nextSIndex = _sIndex + prevConsumed;
-
-                Rune.DecodeFromUtf16(s.AsSpan(nextSIndex), out var nextRune, out _);
-                next = new DirectState(s, nextSIndex, nextRune);
-                return true;
-            }
-
-            next = this;
-            return false;
-        }
-
-        public int NumCharsMatched => _sIndex;
-
-        public int UnmatchedOffset => _sIndex + (_nextRune.IsBmp ? 1 : 2);
-
-        public Rune NextRune => _nextRune;
-
-        public bool IsFinal => _sIndex == _s.Length;
-
-        public int Distance => 0;
-    }
-
-    private struct InputKvp
-    {
-        public InputKvp(KeyValuePair<string, T> input)
-        {
-            Key = input.Key;
-            Value = input.Value;
-        }
-
-        public string Key;
-        public int NextReadIndex;
-        public T Value;
-    }
 
     [DebuggerDisplay("{EntryValue}")]
     private struct Entry
