@@ -7,31 +7,31 @@ public class LevenshtrieTryGetValueTests
     [Fact]
     public void LargeDataSet()
     {
-        var enFrozenTries = new List<KeyValuePair<string, int>>();
-        var nonEnFrozenTries = new List<KeyValuePair<string, int>>();
+        var inKeys = new List<KeyValuePair<string, int>>();
+        var outKeys = new List<KeyValuePair<string, int>>();
 
         for (int i = 0; i < 10000; i++)
         {
             if (i % 17 == 0)
             {
-                nonEnFrozenTries.Add(new KeyValuePair<string, int>(i.ToString(), i));
+                outKeys.Add(new KeyValuePair<string, int>(i.ToString(), i));
             }
             else
             {
-                enFrozenTries.Add(new KeyValuePair<string, int>(i.ToString(), i));
+                inKeys.Add(new KeyValuePair<string, int>(i.ToString(), i));
             }
         }
 
-        var t = Levenshtrie<int>.Create(enFrozenTries);
-
-        foreach (var (key, value) in enFrozenTries)
+        var t = Levenshtrie<int>.Create(inKeys);
+        
+        foreach (var (key, value) in inKeys)
         {
             var found = t.TryGetValue(key, out var actual);
             found.ShouldBeTrue();
             actual.ShouldBe(value);
         }
 
-        foreach (var (key, value) in nonEnFrozenTries)
+        foreach (var (key, value) in outKeys)
         {
             var found = t.TryGetValue(key, out var actual);
             found.ShouldBeFalse();

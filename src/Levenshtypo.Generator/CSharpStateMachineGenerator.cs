@@ -169,8 +169,6 @@ internal static class CSharpStateMachineGenerator
                     });
                 
                 public int Distance => DistanceData[Math.Min({{maxDistance}}, _sRune.Length - _sIndex) * {{groupMap.Count}} + _state];
-
-                public int MinimumDistance => MinDistanceData[_state];
             }
             """);
 

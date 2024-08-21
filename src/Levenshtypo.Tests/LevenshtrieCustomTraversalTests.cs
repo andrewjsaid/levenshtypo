@@ -59,8 +59,6 @@ public class LevenshtrieCustomTraversalTests
 
         public int Distance => 0;
 
-        public int MinimumDistance => 0;
-
         public bool MoveNext(Rune c, out OnlyGetNChars next)
         {
             var nextNumLeft = _numLeft - 1;

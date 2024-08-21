@@ -72,7 +72,5 @@ internal sealed class Distance0Levenshtomaton<TCaseSensitivity> : Levenshtomaton
         public bool IsFinal => _sIndex == _sRune.Length;
 
         public int Distance => 0;
-
-        public int MinimumDistance => 0;
     }
 }

@@ -7,8 +7,12 @@ abstract Levenshtypo.Levenshtomaton.Start() -> Levenshtypo.LevenshtomatonExecuti
 abstract Levenshtypo.LevenshtomatonExecutionState.Distance.get -> int
 abstract Levenshtypo.LevenshtomatonExecutionState.IsFinal.get -> bool
 abstract Levenshtypo.LevenshtomatonExecutionState.MoveNext(System.Text.Rune c, out Levenshtypo.LevenshtomatonExecutionState! next) -> bool
+abstract Levenshtypo.Levenshtrie<T>.Add(string! key, T value) -> void
 abstract Levenshtypo.Levenshtrie<T>.EnumerateSearch<TSearchState>(TSearchState searcher) -> System.Collections.Generic.IEnumerable<Levenshtypo.LevenshtrieSearchResult<T>>!
+abstract Levenshtypo.Levenshtrie<T>.Remove(string! key) -> void
 abstract Levenshtypo.Levenshtrie<T>.Search<TSearchState>(TSearchState searcher) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
+abstract Levenshtypo.Levenshtrie<T>.this[string! key].get -> T
+abstract Levenshtypo.Levenshtrie<T>.this[string! key].set -> void
 abstract Levenshtypo.Levenshtrie<T>.TryGetValue(string! key, out T value) -> bool
 Levenshtypo.ILevenshtomatonExecutionState<TSelf>
 Levenshtypo.ILevenshtomatonExecutionState<TSelf>.Distance.get -> int
@@ -47,5 +51,6 @@ static Levenshtypo.LevenshteinDistance.RestrictedEdit(System.ReadOnlySpan<char> 
 static Levenshtypo.LevenshtomatonExecutionState.FromStruct<TState>(TState state) -> Levenshtypo.LevenshtomatonExecutionState!
 static Levenshtypo.LevenshtomatonFactory.Instance.get -> Levenshtypo.LevenshtomatonFactory!
 static Levenshtypo.Levenshtrie.Create<T>(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, T>>! source, bool ignoreCase = false) -> Levenshtypo.Levenshtrie<T>!
+static Levenshtypo.Levenshtrie.CreateEmpty<T>(bool ignoreCase = false) -> Levenshtypo.Levenshtrie<T>!
 static Levenshtypo.Levenshtrie.CreateStrings(System.Collections.Generic.IEnumerable<string!>! source, bool ignoreCase = false) -> Levenshtypo.Levenshtrie<string!>!
 static Levenshtypo.Levenshtrie<T>.Create(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, T>>! source, bool ignoreCase = false) -> Levenshtypo.Levenshtrie<T>!
