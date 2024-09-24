@@ -13,13 +13,24 @@
     <LangVersion>12</LangVersion>
     <Nullable>enable</Nullable>
     <Description>
-      Levenshtypo - a .NET fuzzy matching string dictionary
+      Levenshtypo allows you to search large data sets by fuzzy matching the key strings.
 
-      Levenshtypo is a library which allows you to search large data sets by fuzzy matching the key strings.
+      The dataset is loaded into a [Trie](https://en.wikipedia.org/wiki/Trie) which
+      searches for keys based on a similarity metric from a given query string.
+      This is akin to a `Dictionary&lt;string, TValue&gt;` which supports a fuzzy `string` key.
 
-      The dataset is loaded upfront as a sequence of key-value pairs. Once loaded it allows searching for the values which are up to a certain Levenshtein Distance away from a query string.
+      Levenshtypo supports [Levenshtein Distance](https://en.wikipedia.org/wiki/Levenshtein_distance)
+      which is the number of character insertions, deletions or substitutions required
+      to transform one string into another. [Restricted Edit Distance](https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance)
+      is also supported which adds transposition of adjacent letters as a possible
+      transformation.
 
-      Levenshtein Distance is the number of character insertions, deletions or substitutions required to transform one string into another.
+      The library also exposes the underlying [Levenshtein Automaton](https://en.wikipedia.org/wiki/Levenshtein_automaton)
+      which can be used independently of the Trie. Given a string K and a distance N, the
+      automaton factory can generate a highly optimized predicate (yes/no) function which
+      is able to test whether a string is within N edit operations from string K. Creating
+      the automaton upfront and testing against a set of strings will be multiple times
+      faster than individually computing the distance between K and each string.
     </Description>
     <Copyright>MIT</Copyright>
     <PackageProjectUrl>https://github.com/andrewjsaid/levenshtypo</PackageProjectUrl>
