@@ -21,6 +21,10 @@ faster than individually computing the distance between K and each string.
 
 ## Installation
 
+[![Automated Tests](https://github.com/andrewjsaid/levenshtypo/actions/workflows/tests.yml/badge.svg)](https://github.com/andrewjsaid/levenshtypo/actions/workflows/tests.yml)
+
+[![AOT Compatible](https://github.com/andrewjsaid/levenshtypo/actions/workflows/aot.yml/badge.svg)](https://github.com/andrewjsaid/levenshtypo/actions/workflows/aot.yml)
+
 Install via [Nuget](https://www.nuget.org/packages/Levenshtypo).
 
 
