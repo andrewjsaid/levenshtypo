@@ -12,7 +12,6 @@ namespace Levenshtypo;
 /// <summary>
 /// A data structure capable of associating strings with values and fuzzy lookups on those strings.
 /// Supports a single value per unique input string.
-/// Does not support modification after creation.
 /// </summary>
 public abstract class Levenshtrie<T> : ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>, ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>>
 {
