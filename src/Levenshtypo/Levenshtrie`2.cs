@@ -307,7 +307,7 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         }
     }
 
-    public void Set(string key, T value, bool isUpdating)
+    private void Set(string key, T value, bool isUpdating)
     {
         EnsureEntriesHasEmptySlots(2);
 
