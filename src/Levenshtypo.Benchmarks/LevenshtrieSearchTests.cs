@@ -6,7 +6,6 @@ public class LevenshtrieSearchTests
     private const string SearchWord = "initiate";
 
     private static readonly IReadOnlyList<string> _englishWords = DataHelpers.EnglishWords();
-    private static readonly IReadOnlyList<string> _1000Entries = Enumerable.Range(0, 1000).Select(i => i.ToString()).ToList();
 
     private readonly Dictionary<string, string> _dictionary = new Dictionary<string, string>(_englishWords.Select(w => new KeyValuePair<string, string>(w, w)));
     private readonly Levenshtrie<string> _levenshtrie = Levenshtrie<string>.Create(_englishWords.Select(w => new KeyValuePair<string, string>(w, w)));
@@ -15,7 +14,7 @@ public class LevenshtrieSearchTests
     private readonly Levenshtomaton _automaton1 = new LevenshtomatonFactory().Construct(SearchWord, 1);
     private readonly Levenshtomaton _automaton2 = new LevenshtomatonFactory().Construct(SearchWord, 2);
     private readonly Levenshtomaton _automaton3 = new LevenshtomatonFactory().Construct(SearchWord, 3);
-
+    /*
     [Benchmark]
     public object Distance0_Dictionary() => _dictionary[SearchWord];
 
@@ -42,16 +41,17 @@ public class LevenshtrieSearchTests
         }
         return results;
     }
-
+    */
     [Benchmark]
     public object Distance1_Levenshtypo_All() => _levenshtrie.Search(_automaton1);
 
+    /*
     [Benchmark]
     public object Distance1_Levenshtypo_Lazy() => _levenshtrie.EnumerateSearch(_automaton1).Count();
 
     [Benchmark]
     public object Distance1_Levenshtypo_Any() => _levenshtrie.EnumerateSearch(_automaton1).Any();
-
+    
     [Benchmark]
     public object Distance1_Naive()
     {
@@ -114,4 +114,5 @@ public class LevenshtrieSearchTests
         }
         return results;
     }
+    */
 }

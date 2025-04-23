@@ -4,33 +4,26 @@
     <TargetFrameworks>net8.0;net6.0</TargetFrameworks>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <PackageId>Levenshtypo</PackageId>
-    <Title>Levenshtypo</Title>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
   
   <PropertyGroup>
+    <PackageId>Levenshtypo</PackageId>
+    <Title>Levenshtypo</Title>
     <Authors>Andrew J Said</Authors>
     <LangVersion>12</LangVersion>
-    <Nullable>enable</Nullable>
     <Description>
-      Levenshtypo allows you to search large data sets by fuzzy matching the key strings.
+Levenshtypo is a high-performance fuzzy string matcher for .NET.
 
-      The dataset is loaded into a [Trie](https://en.wikipedia.org/wiki/Trie) which
-      searches for keys based on a similarity metric from a given query string.
-      This is akin to a `Dictionary&lt;string, TValue&gt;` which supports a fuzzy `string` key.
+It lets you perform typo-tolerant lookups on large string datasets using a fast Trie + Levenshtein Automaton approach. Ideal for search boxes, spell-checking, command matchers, and voice/OCR normalization.
 
-      Levenshtypo supports [Levenshtein Distance](https://en.wikipedia.org/wiki/Levenshtein_distance)
-      which is the number of character insertions, deletions or substitutions required
-      to transform one string into another. [Restricted Edit Distance](https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance)
-      is also supported which adds transposition of adjacent letters as a possible
-      transformation.
+Supports:
 
-      The library also exposes the underlying [Levenshtein Automaton](https://en.wikipedia.org/wiki/Levenshtein_automaton)
-      which can be used independently of the Trie. Given a string K and a distance N, the
-      automaton factory can generate a highly optimized predicate (yes/no) function which
-      is able to test whether a string is within N edit operations from string K. Creating
-      the automaton upfront and testing against a set of strings will be multiple times
-      faster than individually computing the distance between K and each string.
+- Levenshtein and Restricted Edit distances
+- Efficient Trie indexing
+- Raw Levenshtein Automaton generation
+
+Blazing fast. Alloc-friendly. Plug-and-play.
     </Description>
     <Copyright>MIT</Copyright>
     <PackageProjectUrl>https://github.com/andrewjsaid/levenshtypo</PackageProjectUrl>

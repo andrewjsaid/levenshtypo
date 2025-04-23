@@ -23,6 +23,10 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
     private char[] _tailData;
     private int _tailDataSize;
 
+#pragma warning disable CS0414
+    private bool _optimized;
+#pragma warning restore CS0414
+
     private Levenshtrie(Entry[] entries, T[] results, char[] tailData)
     {
         _entries = entries;
@@ -74,6 +78,41 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
                 if (!nextSearchState.MoveNext(tailDataRune, out nextSearchState))
                 {
                     return false;
+                }
+            }
+
+        }
+
+        return true;
+    }
+
+    private bool SearchNodeByPrefix<TSearchState>(in Entry entry, TSearchState searchState, out TSearchState nextSearchState)
+        where TSearchState : ILevenshtomatonExecutionState<TSearchState>
+    {
+        if (!searchState.MoveNext(entry.EntryValue, out nextSearchState))
+        {
+            return false;
+        }
+
+        if (nextSearchState.IsFinal)
+        {
+            return true;
+        }
+
+        if (entry.TailDataLength > 0)
+        {
+            var tailData = _tailData.AsSpan(entry.TailDataIndex, entry.TailDataLength);
+
+            foreach (var tailDataRune in tailData.EnumerateRunes())
+            {
+                if (!nextSearchState.MoveNext(tailDataRune, out nextSearchState))
+                {
+                    return false;
+                }
+
+                if (nextSearchState.IsFinal)
+                {
+                    return true;
                 }
             }
 
@@ -162,50 +201,206 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
         var results = new HashSet<LevenshtrieSearchResult<T>>(LevenshtrieSearchResultComparer<T>.Instance);
         Queue<(int entryIndex, TSearchState searchState)>? processQueue = null;
-        TraverseChildrenOf(0, searcher, MaxStackDepth);
+        Process(0, searcher, MaxStackDepth);
 
         if (processQueue is not null)
         {
-            // Non-recursive fallback
             while (processQueue.Count > 0)
             {
                 var (entryIndex, searchState) = processQueue.Dequeue();
 
-                TraverseChildrenOf(entryIndex, searchState, MaxStackDepth);
+                Process(entryIndex, searchState, MaxStackDepth);
             }
         }
 
         return results.ToArray();
 
-        void TraverseChildrenOf(int entryIndex, TSearchState searchState, int depthLeft)
+        void Process(int entryIndex, TSearchState searchState, int depthLeft)
         {
+            if (depthLeft == 0)
+            {
+                processQueue ??= new();
+                processQueue.Enqueue((entryIndex, searchState));
+                return;
+            }
+
             ref readonly var entry = ref _entries[entryIndex];
 
-            if (searchState.IsFinal && entry.ResultIndex >= 0)
+            if (searchState.IsFinal && entry.ResultIndex is not NoIndex)
             {
                 results.Add(new LevenshtrieSearchResult<T>(searchState.Distance, _results[entry.ResultIndex]));
             }
 
             var nextChildEntryIndex = entry.FirstChildEntryIndex;
-            while (nextChildEntryIndex >= 0)
+            while (nextChildEntryIndex is not NoIndex)
             {
                 ref readonly var childEntry = ref _entries[nextChildEntryIndex];
 
                 if (SearchNode(in childEntry, searchState, out var nextSearchState))
                 {
-                    if (depthLeft > 0)
-                    {
-                        TraverseChildrenOf(nextChildEntryIndex, nextSearchState, depthLeft - 1);
-                    }
-                    else
-                    {
-                        processQueue ??= new();
-                        processQueue.Enqueue((nextChildEntryIndex, nextSearchState));
-                    }
+                    Process(nextChildEntryIndex, nextSearchState, depthLeft - 1);
                 }
 
                 nextChildEntryIndex = childEntry.NextSiblingEntryIndex;
             }
+        }
+    }
+
+    public override T[] SearchByPrefix<TSearchState>(TSearchState searcher)
+    {
+        // This algorithm is recursive but that means that there's a risk of StackOverflow.
+        // Thus we break recursion at a certain depth.
+        const int MaxStackDepth = 20;
+
+        var results = new HashSet<T>();
+        Queue<(int entryIndex, TSearchState searchState)>? processQueue = null;
+        Stack<int>? resultStack = null;
+        Process(0, searcher, MaxStackDepth);
+
+        if (processQueue is not null)
+        {
+            while (processQueue.Count > 0)
+            {
+                var (entryIndex, searchState) = processQueue.Dequeue();
+
+                Process(entryIndex, searchState, MaxStackDepth);
+            }
+        }
+
+        return results.ToArray();
+
+        void Process(int entryIndex, TSearchState searchState, int depthLeft)
+        {
+            if (depthLeft == 0)
+            {
+                processQueue ??= new();
+                processQueue.Enqueue((entryIndex, searchState));
+                return;
+            }
+
+            ref readonly var entry = ref _entries[entryIndex];
+
+            if (searchState.IsFinal)
+            {
+                AddWithDescendants(in entry);
+            }
+            else
+            {
+                var nextChildEntryIndex = entry.FirstChildEntryIndex;
+                while (nextChildEntryIndex is not NoIndex)
+                {
+                    ref readonly var childEntry = ref _entries[nextChildEntryIndex];
+
+                    if (SearchNodeByPrefix(in childEntry, searchState, out var nextSearchState))
+                    {
+                        if (nextSearchState.IsFinal)
+                        {
+                            AddWithDescendants(in childEntry);
+                        }
+                        else
+                        {
+                            Process(nextChildEntryIndex, nextSearchState, depthLeft - 1);
+                        }
+                    }
+
+                    nextChildEntryIndex = childEntry.NextSiblingEntryIndex;
+                }
+            }
+        }
+
+        void AddWithDescendants(ref readonly Entry entry)
+        {
+            if (entry.ResultIndex is not NoIndex)
+            {
+                results.Add(_results[entry.ResultIndex]);
+            }
+
+            if (entry.FirstChildEntryIndex is not NoIndex)
+            {
+                if (_optimized)
+                {
+                    var firstResultIndex = FindFirstResultIndex(_entries, entry.FirstChildEntryIndex);
+                    if (firstResultIndex is not NoIndex)
+                    {
+                        var lastResultIndex = FindLastResultIndex(_entries, entry.FirstChildEntryIndex);
+                        Debug.Assert(lastResultIndex is not NoIndex, "At the very least, lastResultIndex should be equal to firstResultIndex");
+                        var serialResults = _results.AsSpan(firstResultIndex, lastResultIndex - firstResultIndex + 1);
+                        foreach (var result in serialResults)
+                        {
+                            results.Add(result);
+                        }
+                    }
+                }
+                else
+                {
+                    resultStack ??= new();
+                    resultStack.Push(entry.FirstChildEntryIndex);
+
+                    while (resultStack.Count > 0)
+                    {
+                        var nextIndex = resultStack.Pop();
+                        ref readonly var nextEntry = ref _entries[nextIndex];
+
+                        if (nextEntry.ResultIndex is not NoIndex)
+                        {
+                            results.Add(_results[nextEntry.ResultIndex]);
+                        }
+
+                        if (nextEntry.NextSiblingEntryIndex is not NoIndex)
+                        {
+                            resultStack.Push(nextEntry.NextSiblingEntryIndex);
+                        }
+
+                        if (nextEntry.FirstChildEntryIndex is not NoIndex)
+                        {
+                            resultStack.Push(nextEntry.FirstChildEntryIndex);
+                        }
+                    }
+                }
+            }
+        }
+
+        static int FindFirstResultIndex(Entry[] entries, int entryIndex)
+        {
+            ref readonly var entry = ref entries[entryIndex];
+
+            var resultIndex = entry.ResultIndex;
+
+            if (resultIndex is NoIndex && entry.FirstChildEntryIndex is not NoIndex)
+            {
+                resultIndex = FindFirstResultIndex(entries, entry.FirstChildEntryIndex);
+            }
+
+            if (resultIndex is NoIndex && entry.NextSiblingEntryIndex is not NoIndex)
+            {
+                resultIndex = FindFirstResultIndex(entries, entry.NextSiblingEntryIndex);
+            }
+
+            return resultIndex;
+        }
+
+        static int FindLastResultIndex(Entry[] entries, int entryIndex)
+        {
+            ref readonly var entry = ref entries[entryIndex];
+
+            var resultIndex = NoIndex;
+
+            if (resultIndex is NoIndex && entry.NextSiblingEntryIndex is not NoIndex)
+            {
+                resultIndex = FindLastResultIndex(entries, entry.NextSiblingEntryIndex);
+            }
+
+            if (resultIndex is NoIndex && entry.FirstChildEntryIndex is not NoIndex)
+            {
+                resultIndex = FindLastResultIndex(entries, entry.FirstChildEntryIndex);
+            }
+
+            if (resultIndex is NoIndex && entry.ResultIndex is not NoIndex)
+            {
+                resultIndex = entry.ResultIndex;
+            }
+
+            return resultIndex;
         }
     }
 
@@ -288,6 +483,11 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         public void Reset() => throw new NotSupportedException();
     }
 
+    public override IEnumerable<T> EnumerateSearchByPrefix<TSearchState>(TSearchState searcher)
+    {
+        throw new NotImplementedException();
+    }
+
     public override void Add(string key, T value) => Set(key, value, isUpdating: false);
 
     public override T this[string key]
@@ -309,6 +509,7 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
     private void Set(string key, T value, bool isUpdating)
     {
+        _optimized = false;
         EnsureEntriesHasEmptySlots(2);
 
         var entries = _entries;
@@ -482,6 +683,7 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         {
             _results[entry.ResultIndex] = default!;
             entry.ResultIndex = -1;
+            _optimized = false;
         }
     }
 
@@ -498,7 +700,7 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         _results[_resultsSize++] = value;
 
         Debug.Assert(
-            splitParentEntryChars >= parentEntry.EntryValue.Utf16SequenceLength 
+            splitParentEntryChars >= parentEntry.EntryValue.Utf16SequenceLength
             && splitParentEntryChars <= parentEntry.EntryValue.Utf16SequenceLength + parentEntry.TailDataLength);
 
         if (splitParentEntryChars < parentEntry.EntryValue.Utf16SequenceLength + parentEntry.TailDataLength)
@@ -614,12 +816,77 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         }
     }
 
-    private int NextArraySize(int currentSize) =>
+    private static int NextArraySize(int currentSize) =>
         currentSize switch
         {
             < 16 => 16,
             _ => currentSize * 2
         };
+
+    public override void Optimize()
+    {
+        // This method re-organizes entries and results to be in DFS order.
+
+        var oldEntries = _entries;
+        var oldResults = _results;
+
+        var entries = new Entry[_entriesSize];
+        var results = new T[_resultsSize];
+
+        int entryWriteIndex = 0;
+        int resultsWriteIndex = 0;
+
+        var stack = new Stack<(int oldEntryIndex, int entryPrevSiblingIndex, int entryParentIndex)>();
+        stack.Push((0, NoIndex, NoIndex));
+
+        while (stack.Count > 0)
+        {
+            var (oldEntryIndex, entryPrevSiblingIndex, entryParentIndex) = stack.Pop();
+
+            if (entryPrevSiblingIndex is not NoIndex)
+            {
+                entries[entryPrevSiblingIndex].NextSiblingEntryIndex = entryWriteIndex;
+            }
+
+            if (entryParentIndex is not NoIndex)
+            {
+                entries[entryParentIndex].FirstChildEntryIndex = entryWriteIndex;
+            }
+
+            var oldEntry = oldEntries[oldEntryIndex];
+            var entry = new Entry
+            {
+                EntryValue = oldEntry.EntryValue,
+                ResultIndex = NoIndex,
+                FirstChildEntryIndex = NoIndex,
+                NextSiblingEntryIndex = NoIndex,
+                TailDataIndex = oldEntry.TailDataIndex,
+                TailDataLength = oldEntry.TailDataLength,
+            };
+
+            if (oldEntry.ResultIndex is not NoIndex)
+            {
+                entry.ResultIndex = resultsWriteIndex;
+                results[resultsWriteIndex++] = oldResults[oldEntry.ResultIndex];
+            }
+
+            if (oldEntry.NextSiblingEntryIndex is not NoIndex)
+            {
+                stack.Push((oldEntry.NextSiblingEntryIndex, entryWriteIndex, NoIndex));
+            }
+
+            if (oldEntry.FirstChildEntryIndex is not NoIndex)
+            {
+                stack.Push((oldEntry.FirstChildEntryIndex, NoIndex, entryWriteIndex));
+            }
+
+            entries[entryWriteIndex++] = entry;
+        }
+
+        _entries = entries;
+        _results = results;
+        _optimized = true;
+    }
 
     [DebuggerDisplay("{EntryValue}")]
     private struct Entry

@@ -104,7 +104,7 @@ public class LevenshtrieSearchTests
 
         t.Search(query, distance)
             .ShouldBe(expectedResults, ignoreOrder: true, comparer: new LevenshtrieSearchResultComparer<string>());
-        
+
         t.EnumerateSearch(query, distance)
             .ShouldBe(expectedResults, ignoreOrder: true, comparer: new LevenshtrieSearchResultComparer<string>());
     }

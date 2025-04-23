@@ -107,7 +107,7 @@ You can hook into the automaton layer directly for:
 
 Levenshtypo is written with performance at the forefront of all decisions.
 
-> Practical Example: Matching against **450+ words** (Edit Distance = 1) is typically less than **0.02 ms** compared to 73 ms with a for-loop.
+> Practical Example: Matching against **450,000+ words** (Edit Distance = 1) is typically less than **0.02 ms** compared to 73 ms with a for-loop.
 
 If the following benchmarks don't impress you, nothing will!
 
