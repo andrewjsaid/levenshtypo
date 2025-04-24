@@ -1,6 +1,5 @@
 ﻿#nullable enable
 abstract Levenshtypo.Levenshtrie<T>.EnumerateSearchByPrefix<TSearchState>(TSearchState searcher) -> System.Collections.Generic.IEnumerable<T>!
-abstract Levenshtypo.Levenshtrie<T>.Optimize() -> void
 abstract Levenshtypo.Levenshtrie<T>.SearchByPrefix<TSearchState>(TSearchState searcher) -> T[]!
 Levenshtypo.Levenshtrie<T>.EnumerateSearchByPrefix(Levenshtypo.Levenshtomaton! automaton) -> System.Collections.Generic.IEnumerable<T>!
 Levenshtypo.Levenshtrie<T>.EnumerateSearchByPrefix(Levenshtypo.LevenshtomatonExecutionState! searcher) -> System.Collections.Generic.IEnumerable<T>!

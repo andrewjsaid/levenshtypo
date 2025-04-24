@@ -4,10 +4,8 @@ namespace Levenshtypo.Tests;
 
 public class LevenshtrieTryGetValueTests
 {
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void LargeDataSet(bool optimize)
+    [Fact]
+    public void LargeDataSet()
     {
         var inKeys = new List<KeyValuePair<string, int>>();
         var outKeys = new List<KeyValuePair<string, int>>();
@@ -25,10 +23,6 @@ public class LevenshtrieTryGetValueTests
         }
 
         var t = Levenshtrie<int>.Create(inKeys);
-        if (optimize)
-        {
-            t.Optimize();
-        }
 
         foreach (var (key, value) in inKeys)
         {

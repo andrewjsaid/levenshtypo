@@ -283,13 +283,6 @@ public abstract class Levenshtrie<T> :
     public abstract void Remove(string key);
 
     /// <summary>
-    /// Optimizes internal data structures to improve performance
-    /// of data retrieval. Especially useful for operations like
-    /// searching by prefix.
-    /// </summary>
-    public abstract void Optimize();
-
-    /// <summary>
     /// Purely a wrapper to be able to implement the same interface multiple times.
     /// But using a different wrapper to reference the correct one.
     /// </summary>

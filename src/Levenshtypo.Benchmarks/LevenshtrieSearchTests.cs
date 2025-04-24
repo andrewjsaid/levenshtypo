@@ -14,7 +14,7 @@ public class LevenshtrieSearchTests
     private readonly Levenshtomaton _automaton1 = new LevenshtomatonFactory().Construct(SearchWord, 1);
     private readonly Levenshtomaton _automaton2 = new LevenshtomatonFactory().Construct(SearchWord, 2);
     private readonly Levenshtomaton _automaton3 = new LevenshtomatonFactory().Construct(SearchWord, 3);
-    /*
+
     [Benchmark]
     public object Distance0_Dictionary() => _dictionary[SearchWord];
 
@@ -41,17 +41,16 @@ public class LevenshtrieSearchTests
         }
         return results;
     }
-    */
+
     [Benchmark]
     public object Distance1_Levenshtypo_All() => _levenshtrie.Search(_automaton1);
 
-    /*
     [Benchmark]
     public object Distance1_Levenshtypo_Lazy() => _levenshtrie.EnumerateSearch(_automaton1).Count();
 
     [Benchmark]
     public object Distance1_Levenshtypo_Any() => _levenshtrie.EnumerateSearch(_automaton1).Any();
-    
+
     [Benchmark]
     public object Distance1_Naive()
     {
@@ -114,5 +113,5 @@ public class LevenshtrieSearchTests
         }
         return results;
     }
-    */
+
 }

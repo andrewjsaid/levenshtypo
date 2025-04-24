@@ -4,18 +4,11 @@ namespace Levenshtypo.Tests;
 
 public class LevenshtrieSearchByPrefixTests
 {
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void EmptyString(bool optimize)
+    [Fact]
+    public void EmptyString()
     {
         string[] entries = ["", "1", "12", "123"];
         var levenshtrie = Levenshtrie<string>.Create(entries.Select(e => new KeyValuePair<string, string>(e, e)));
-
-        if (optimize)
-        {
-            levenshtrie.Optimize();
-        }
 
         Test(levenshtrie, "", 2, ["", "1", "12", "123"]);
         Test(levenshtrie, "1", 1, ["", "1", "12", "123"]);
@@ -23,39 +16,25 @@ public class LevenshtrieSearchByPrefixTests
         Test(levenshtrie, "2", 0, []);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void Food(bool optimize)
+    [Fact]
+    public void Food()
     {
         string[] entries = ["mood", "f", "food", "good", "dood", "flood", "fod", "fob", "foodie", "foodies", "foodier"];
         var levenshtrie = Levenshtrie<string>.Create(entries.Select(e => new KeyValuePair<string, string>(e, e)));
-
-        if (optimize)
-        {
-            levenshtrie.Optimize();
-        }
 
         Test(levenshtrie, "food", 0, ["food", "foodie", "foodies", "foodier"]);
         Test(levenshtrie, "food", 1, ["food", "good", "dood", "mood", "flood", "fod", "foodie", "foodies", "foodier"]);
         Test(levenshtrie, "food", 2, ["food", "good", "dood", "mood", "flood", "fod", "fob", "foodie", "foodies", "foodier"]);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void English(bool optimize)
+    [Fact]
+    public void English()
     {
         var factory = new LevenshtomatonFactory();
 
         var words = DataHelpers.EnglishWords();
 
         var levenshtrie = Levenshtrie<string>.Create(words.Select(word => new KeyValuePair<string, string>(word, word)));
-
-        if (optimize)
-        {
-            levenshtrie.Optimize();
-        }
 
         RunTest("hello");
         RunTest("world");
@@ -109,28 +88,19 @@ public class LevenshtrieSearchByPrefixTests
         }
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void StackOverflow_Scenario1(bool optimize)
+    [Fact]
+    public void StackOverflow_Scenario1()
     {
         var baseString = new string('a', 9_999);
         string[] entries = [baseString + 'a', baseString + 'b'];
         var levenshtrie = Levenshtrie<string>.Create(entries.Select(e => new KeyValuePair<string, string>(e, e)));
 
-        if (optimize)
-        {
-            levenshtrie.Optimize();
-        }
-
         Test(levenshtrie, baseString + 'a', 1, [entries[1], entries[0]]);
         Test(levenshtrie, baseString, 0, [entries[1], entries[0]]);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void StackOverflow_Scenario2(bool optimize)
+    [Fact]
+    public void StackOverflow_Scenario2()
     {
         var entries = new List<string>();
         for (int i = 1; i < 10_000; i++)
@@ -139,11 +109,6 @@ public class LevenshtrieSearchByPrefixTests
         }
 
         var levenshtrie = Levenshtrie<string>.Create(entries.Select(e => new KeyValuePair<string, string>(e, e)));
-
-        if (optimize)
-        {
-            levenshtrie.Optimize();
-        }
 
         Test(levenshtrie, entries[^1], 1, [entries[^2], entries[^1]]);
         Test(levenshtrie, "a", 0, entries);
@@ -155,10 +120,8 @@ public class LevenshtrieSearchByPrefixTests
             .OrderBy(x => x)
             .ShouldBe(expectedResults.OrderBy(x => x));
 
-        /*
-        t.EnumerateSearch(query, distance)
+        t.EnumerateSearchByPrefix(query, distance)
             .OrderBy(x => x)
             .ShouldBe(expectedResults.OrderBy(x => x));
-        */
     }
 }
