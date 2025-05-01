@@ -31,7 +31,34 @@ public class LevenshtrieMutationTests
             "z" // branch off root
             ]);
     }
-        
+
+    [Fact]
+    public void GeneratedTests_Guids_MultiMap()
+    {
+        RunMultiMapTest(Enumerable.Range(0, 100_000).Select(_ => Guid.NewGuid().ToString()));
+    }
+
+    [Fact]
+    public void GeneratedTests_Integers_MultiMap()
+    {
+        RunMultiMapTest(Enumerable.Range(0, 100_000).Select(i => i.ToString()));
+    }
+
+    [Fact]
+    public void HandWrittenTests_MultiMap()
+    {
+        RunMultiMapTest([
+            "a",
+            "abcde", // extend head
+            "abcdefghi", // extend tail data
+            "az", // branch off head
+            "abz", // branch off tail data
+            "abc", // stop at head
+            "abcdefg", // stop at tail data
+            "",
+            "z" // branch off root
+            ]);
+    }
 
     private void RunTest(IEnumerable<string> keys)
     {
@@ -39,30 +66,82 @@ public class LevenshtrieMutationTests
 
         var addedKeys = new List<string>();
 
-        foreach (var key in keys)
+        for (int i = 0; i < 2; i++)
         {
-            addedKeys.Add(key);
+            addedKeys.Clear();
 
-            trie.TryGetValue(key, out _).ShouldBeFalse();
+            foreach (var key in keys)
+            {
+                addedKeys.Add(key);
 
-            trie.Add(key, key);
+                trie.TryGetValue(key, out _).ShouldBeFalse();
 
-            trie.TryGetValue(key, out var found).ShouldBeTrue();
-            ReferenceEquals(key, found).ShouldBeTrue();
+                trie.Add(key, key);
+
+                trie.TryGetValue(key, out var found).ShouldBeTrue();
+                ReferenceEquals(key, found).ShouldBeTrue();
+            }
+
+            foreach (var key in addedKeys)
+            {
+                trie.TryGetValue(key, out var found).ShouldBeTrue();
+                ReferenceEquals(key, found).ShouldBeTrue();
+            }
+
+            foreach (var key in addedKeys)
+            {
+                trie.Remove(key);
+
+                trie.TryGetValue(key, out var found).ShouldBeFalse();
+                found.ShouldBeNull();
+            }
         }
+    }
 
-        foreach (var key in addedKeys)
+
+    private void RunMultiMapTest(IEnumerable<string> keys)
+    {
+        var trie = Levenshtrie.CreateEmptyMulti<string>();
+
+        var addedKeys = new List<string>();
+
+        for (int i = 0; i < 2; i++)
         {
-            trie.TryGetValue(key, out var found).ShouldBeTrue();
-            ReferenceEquals(key, found).ShouldBeTrue();
-        }
+            addedKeys.Clear();
 
-        foreach (var key in addedKeys)
-        {
-            trie.Remove(key);
+            foreach (var key in keys)
+            {
+                addedKeys.Add(key);
 
-            trie.TryGetValue(key, out var found).ShouldBeFalse();
-            found.ShouldBeNull();
+                trie.GetValues(key).ToArray().ShouldBeEmpty();
+
+                trie.Add(key, key + "_1");
+
+                trie.GetValues(key).ToArray().ShouldBe([key + "_1"], comparer: StringComparer.Ordinal);
+
+                trie.Add(key, key + "_2");
+                trie.Add(key, key + "_3");
+
+                trie.GetValues(key).ToArray().ShouldBe([key + "_1", key + "_2", key + "_3"], comparer: StringComparer.Ordinal);
+            }
+
+            foreach (var key in addedKeys)
+            {
+                trie.GetValues(key).ToArray().ShouldBe([key + "_1", key + "_2", key + "_3"], comparer: StringComparer.Ordinal);
+            }
+
+            foreach (var key in addedKeys)
+            {
+                var removed = trie.Remove(key, key + "_2", StringComparer.Ordinal);
+                removed.ShouldBeTrue();
+
+                trie.GetValues(key).ToArray().ShouldBe([key + "_1", key + "_3"], comparer: StringComparer.Ordinal);
+
+                removed = trie.RemoveAll(key);
+                removed.ShouldBeTrue();
+
+                trie.GetValues(key).ToArray().ShouldBeEmpty();
+            }
         }
     }
 

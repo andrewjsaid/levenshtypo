@@ -6,8 +6,8 @@ namespace Levenshtypo;
 
 internal sealed class Distance0Levenshtomaton<TCaseSensitivity> : Levenshtomaton where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
 {
-    private string _s;
-    private Rune[] _sRune;
+    private readonly string _s;
+    private readonly Rune[] _sRune;
 
     public Distance0Levenshtomaton(string s, LevenshtypoMetric metric) : base(s, 0)
     {

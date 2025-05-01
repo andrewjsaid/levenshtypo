@@ -1,14 +1,13 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Levenshtypo;
 
 /// <summary>
 /// A data structure capable of associating strings with values and fuzzy lookups on those strings.
-/// Supports a single value per unique input string.
 /// </summary>
-public sealed class Levenshtrie<T> :
+public sealed class LevenshtrieMultiMap<T> :
     ILevenshtrie<T>,
     ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>,
     ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>>,
@@ -17,7 +16,7 @@ public sealed class Levenshtrie<T> :
 {
     private readonly LevenshtrieCore<T> _coreTrie;
 
-    private Levenshtrie(LevenshtrieCore<T> coreTrie)
+    private LevenshtrieMultiMap(LevenshtrieCore<T> coreTrie)
     {
         _coreTrie = coreTrie;
     }
@@ -27,19 +26,19 @@ public sealed class Levenshtrie<T> :
     /// <summary>
     /// Builds a tree from the given associations between strings and values.
     /// </summary>
-    public static Levenshtrie<T> Create(IEnumerable<KeyValuePair<string, T>> source, bool ignoreCase = false)
+    public static LevenshtrieMultiMap<T> Create(IEnumerable<KeyValuePair<string, T>> source, bool ignoreCase = false)
     {
-        var coreTrie = LevenshtrieCore<T>.Create(source, ignoreCase, allowMulti: false);
-        return new Levenshtrie<T>(coreTrie);
+        var coreTrie = LevenshtrieCore<T>.Create(source, ignoreCase, allowMulti: true);
+        return new LevenshtrieMultiMap<T>(coreTrie);
     }
 
     /// <summary>
-    /// Finds the value associated with the specified key.
+    /// Finds the values associated with the specified key.
     /// </summary>
-    public bool TryGetValue(string key, [MaybeNullWhen(false)] out T value)
+    public GetValuesResult GetValues(string key)
     {
-        var cursor = _coreTrie.GetValues(key);
-        return cursor.MoveNext(out value);
+        var values = _coreTrie.GetValues(key);
+        return new GetValuesResult(values);
     }
 
     /// <inheritdoc />
@@ -68,7 +67,7 @@ public sealed class Levenshtrie<T> :
         where TSearchState : ILevenshtomatonExecutionState<TSearchState>
         => _coreTrie.EnumerateSearchByPrefix(searcher);
 
-    SearchByPrefixWrapper<IEnumerable<T>> ILevenshtomatonExecutor<SearchByPrefixWrapper<IEnumerable<T>>>.ExecuteAutomaton<TState>(TState executionState) => new (EnumerateSearchByPrefix(executionState));
+    SearchByPrefixWrapper<IEnumerable<T>> ILevenshtomatonExecutor<SearchByPrefixWrapper<IEnumerable<T>>>.ExecuteAutomaton<TState>(TState executionState) => new(EnumerateSearchByPrefix(executionState));
 
     /// <summary>
     /// Adds a key / value pair to the trie.
@@ -77,30 +76,55 @@ public sealed class Levenshtrie<T> :
         => _coreTrie.Set(key, value, overwrite: false);
 
     /// <summary>
-    /// Gets or sets the value with the specified key.
-    /// </summary>
-    public T this[string key]
-    {
-        get
-        {
-            if (TryGetValue(key, out var result))
-            {
-                return result;
-            }
-
-            throw new ArgumentOutOfRangeException(nameof(key));
-        }
-        set
-        {
-            _coreTrie.Set(key, value, overwrite: true);
-        }
-    }
-
-    /// <summary>
-    /// Removes a key from the trie.
+    /// Removes all values associated by a specific key from the trie.
     /// </summary>
     /// <returns>Returns <c>true</c> if any entry was removed; <c>false</c> otherwise.</returns>
-    public bool Remove(string key) 
+    public bool RemoveAll(string key)
         => _coreTrie.Remove(key, all: true, default, EqualityComparer<T>.Default);
 
+    /// <summary>
+    /// Removes a specific value associated by a specific key from the trie.
+    /// </summary>
+    /// <returns>Returns <c>true</c> if any entry was removed; <c>false</c> otherwise.</returns>
+    public bool Remove(string key, T value, IEqualityComparer<T> comparer)
+         => _coreTrie.Remove(key, all: false, value, comparer);
+
+    public struct GetValuesResult : IEnumerable<T>
+    {
+        private LevenshtrieCore<T>.Cursor _cursor;
+
+        internal GetValuesResult(LevenshtrieCore<T>.Cursor cursor)
+        {
+            _cursor = cursor;
+        }
+
+        public GetValuesEnumerator GetEnumerator() => new GetValuesEnumerator(_cursor);
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    public struct GetValuesEnumerator : IEnumerator<T>
+    {
+        private LevenshtrieCore<T>.Cursor _cursor;
+        private T _current;
+
+        internal GetValuesEnumerator(LevenshtrieCore<T>.Cursor cursor)
+        {
+            _cursor = cursor;
+            _current = default!;
+        }
+
+        public T Current => _current;
+
+        object IEnumerator.Current => Current!;
+
+        public bool MoveNext() => _cursor.MoveNext(out _current!);
+
+        void IDisposable.Dispose() { }
+
+        void IEnumerator.Reset() => throw new NotSupportedException();
+    }
 }
+

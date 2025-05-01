@@ -239,8 +239,7 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
                     int indexOffset = 0;
                     if (multiStateBuilder.Count > 0)
                     {
-                        int[] nextMultiState;
-                        (nextMultiState, indexOffset) = CompleteMultiStates(characteristicVectorLength);
+                        (var nextMultiState, indexOffset) = CompleteMultiStates(characteristicVectorLength);
                         nextStateIndex = MapNfaStatesToDfaIdx(nextMultiState);
 
                         // Point directly to the state
@@ -257,7 +256,7 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
                     };
                 }
 
-                var (finalErrorNegated, minimumError) = CalculateErrorStats(multiState, characteristicVectorLength);
+                var (finalErrorNegated, _) = CalculateErrorStats(multiState, characteristicVectorLength);
 
                 states[dfaStateWriteIndex++] = new DfaState
                 {

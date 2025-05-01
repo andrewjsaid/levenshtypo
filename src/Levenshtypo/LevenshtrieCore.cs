@@ -1,39 +1,39 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Levenshtypo;
 
-internal sealed class Levenshtrie<T, TCaseSensitivity> :
-    Levenshtrie<T>, ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]> where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
+internal abstract class LevenshtrieCore<T>
 {
     private const int NoIndex = -1;
 
     private Entry[] _entries;
     private int _entriesSize;
 
-    private T[] _results;
+    private Result[] _results = [];
     private int _resultsSize;
+    private readonly bool _allowMulti;
+    private int _freeResultHeadIndex = NoIndex;
+    private int _freeResultCount;
 
-    private char[] _tailData;
+    private char[] _tailData = [];
     private int _tailDataSize;
 
-    private Levenshtrie(Entry[] entries, T[] results, char[] tailData)
+    private protected LevenshtrieCore(Entry root, bool allowMulti)
     {
-        _entries = entries;
-        _entriesSize = _entries.Length;
-        _results = results;
-        _resultsSize = results.Length;
-        _tailData = tailData;
-        _tailDataSize = tailData.Length;
+        _entries = [root];
+        _entriesSize = 1;
+        _allowMulti = allowMulti;
     }
 
-    private protected override bool IgnoreCase => typeof(TCaseSensitivity) == typeof(CaseInsensitive);
-
-    internal static Levenshtrie<T> Create(IEnumerable<KeyValuePair<string, T>> source)
+    internal static LevenshtrieCore<T> Create(
+        IEnumerable<KeyValuePair<string, T>> source,
+        bool ignoreCase,
+        bool allowMulti)
     {
         var root = new Entry
         {
@@ -45,15 +45,23 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
             TailDataLength = 0
         };
 
-        var trie = new Levenshtrie<T, TCaseSensitivity>([root], [], []);
+        LevenshtrieCore<T> trie = ignoreCase
+            ? new CaseInsensitiveLevenshtrieCore<T>(root, allowMulti)
+            : new CaseSensitiveLevenshtrieCore<T>(root, allowMulti);
 
         foreach (var (key, value) in source)
         {
-            trie.Add(key, value);
+            trie.Set(key, value, overwrite: false);
         }
 
         return trie;
     }
+
+    public abstract bool IgnoreCase { get; }
+
+    private protected abstract bool AreEqual(Rune a, Rune b);
+
+    private protected abstract bool AreEqual(char a, char b);
 
     private bool SearchNode<TSearchState>(in Entry entry, TSearchState searchState, out TSearchState nextSearchState)
         where TSearchState : ILevenshtomatonExecutionState<TSearchState>
@@ -115,7 +123,7 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         return true;
     }
 
-    public override bool TryGetValue(string key, [MaybeNullWhen(false)] out T value)
+    public Cursor GetValues(string key)
     {
         var entries = _entries;
 
@@ -133,7 +141,7 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
             {
                 entry = ref _entries[nextChildEntryIndex];
 
-                if (default(TCaseSensitivity).Equals(entry.EntryValue, nextRune))
+                if (AreEqual(entry.EntryValue, nextRune))
                 {
                     found = true;
 
@@ -149,7 +157,7 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
                             Rune.DecodeFromUtf16(tailData, out var tailRune, out charsConsumed);
                             tailData = tailData[charsConsumed..];
 
-                            if (!default(TCaseSensitivity).Equals(nextRune, tailRune))
+                            if (!AreEqual(nextRune, tailRune))
                             {
                                 found = false;
                                 break;
@@ -177,17 +185,16 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
         if (entry.ResultIndex is not NoIndex)
         {
-            value = _results[entry.ResultIndex];
-            return true;
+            return new Cursor(_results, entry.ResultIndex);
         }
 
     NotFound:
 
-        value = default;
-        return false;
+        return new Cursor(_results, NoIndex);
     }
 
-    public override LevenshtrieSearchResult<T>[] Search<TSearchState>(TSearchState searcher)
+    public LevenshtrieSearchResult<T>[] Search<TSearchState>(TSearchState searcher)
+        where TSearchState : ILevenshtomatonExecutionState<TSearchState>
     {
         // This algorithm is recursive but that means that there's a risk of StackOverflow.
         // Thus we break recursion at a certain depth.
@@ -222,7 +229,11 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
             if (searchState.IsFinal && entry.ResultIndex is not NoIndex)
             {
-                results.Add(new LevenshtrieSearchResult<T>(searchState.Distance, _results[entry.ResultIndex]));
+                var cursor = new Cursor(_results, entry.ResultIndex);
+                while (cursor.MoveNext(out var result))
+                {
+                    results.Add(new LevenshtrieSearchResult<T>(searchState.Distance, result));
+                }
             }
 
             var nextChildEntryIndex = entry.FirstChildEntryIndex;
@@ -240,7 +251,8 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         }
     }
 
-    public override T[] SearchByPrefix<TSearchState>(TSearchState searcher)
+    public T[] SearchByPrefix<TSearchState>(TSearchState searcher)
+        where TSearchState : ILevenshtomatonExecutionState<TSearchState>
     {
         // This algorithm is recursive but that means that there's a risk of StackOverflow.
         // Thus we break recursion at a certain depth.
@@ -306,7 +318,11 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         {
             if (entry.ResultIndex is not NoIndex)
             {
-                results.Add(_results[entry.ResultIndex]);
+                var cursor = new Cursor(_results, entry.ResultIndex);
+                while (cursor.MoveNext(out var result))
+                {
+                    results.Add(result);
+                }
             }
 
             if (entry.FirstChildEntryIndex is not NoIndex)
@@ -330,7 +346,11 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
                     if (nextEntry.ResultIndex is not NoIndex)
                     {
-                        results.Add(_results[nextEntry.ResultIndex]);
+                        var cursor = new Cursor(_results, nextEntry.ResultIndex);
+                        while (cursor.MoveNext(out var result))
+                        {
+                            results.Add(result);
+                        }
                     }
                 }
             }
@@ -380,16 +400,17 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         }
     }
 
-    public override IEnumerable<LevenshtrieSearchResult<T>> EnumerateSearch<TSearchState>(TSearchState searcher)
+    public IEnumerable<LevenshtrieSearchResult<T>> EnumerateSearch<TSearchState>(TSearchState searcher)
+        where TSearchState : ILevenshtomatonExecutionState<TSearchState>
         => new SearchEnumerable<TSearchState>(this, searcher);
 
     private class SearchEnumerable<TSearchState> : IEnumerable<LevenshtrieSearchResult<T>>
         where TSearchState : ILevenshtomatonExecutionState<TSearchState>
     {
-        private readonly Levenshtrie<T, TCaseSensitivity> _trie;
+        private readonly LevenshtrieCore<T> _trie;
         private readonly TSearchState _initialState;
 
-        public SearchEnumerable(Levenshtrie<T, TCaseSensitivity> trie, TSearchState initialState)
+        public SearchEnumerable(LevenshtrieCore<T> trie, TSearchState initialState)
         {
             _trie = trie;
             _initialState = initialState;
@@ -397,29 +418,39 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
         public IEnumerator<LevenshtrieSearchResult<T>> GetEnumerator() => new SearchEnumerator<TSearchState>(_trie, _initialState);
 
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
     private class SearchEnumerator<TSearchState> : IEnumerator<LevenshtrieSearchResult<T>>
         where TSearchState : ILevenshtomatonExecutionState<TSearchState>
     {
-        private readonly Levenshtrie<T, TCaseSensitivity> _trie;
+        private readonly LevenshtrieCore<T> _trie;
         private readonly Stack<(int entryIndex, TSearchState searchState)> _state = new();
+        private int _cursorDistance;
+        private Cursor _cursor;
 
-        public SearchEnumerator(Levenshtrie<T, TCaseSensitivity> trie, TSearchState initialState)
+        public SearchEnumerator(LevenshtrieCore<T> trie, TSearchState initialState)
         {
             _trie = trie;
             _state.Push((entryIndex: 0, searchState: initialState));
+            _cursor = new Cursor(trie._results, NoIndex);
         }
 
         public LevenshtrieSearchResult<T> Current { get; private set; }
 
-        object IEnumerator.Current => Current;
+        object System.Collections.IEnumerator.Current => Current;
 
         public void Dispose() { }
 
         public bool MoveNext()
         {
+        restart:
+            if (_cursor.MoveNext(out var result))
+            {
+                Current = new LevenshtrieSearchResult<T>(_cursorDistance, result);
+                return true;
+            }
+
             while (_state.TryPop(out var state))
             {
                 var (entryIndex, searchState) = state;
@@ -447,8 +478,9 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
                 if (searchState.IsFinal && entry.ResultIndex is not NoIndex)
                 {
-                    Current = new LevenshtrieSearchResult<T>(searchState.Distance, _trie._results[entry.ResultIndex]);
-                    return true;
+                    _cursorDistance = searchState.Distance;
+                    _cursor.ResetTo(entry.ResultIndex);
+                    goto restart;
                 }
             }
 
@@ -459,16 +491,17 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         public void Reset() => throw new NotSupportedException();
     }
 
-    public override IEnumerable<T> EnumerateSearchByPrefix<TSearchState>(TSearchState searcher)
+    public IEnumerable<T> EnumerateSearchByPrefix<TSearchState>(TSearchState searcher)
+        where TSearchState : ILevenshtomatonExecutionState<TSearchState>
         => new SearchByPrefixEnumerable<TSearchState>(this, searcher);
 
     private class SearchByPrefixEnumerable<TSearchState> : IEnumerable<T>
         where TSearchState : ILevenshtomatonExecutionState<TSearchState>
     {
-        private readonly Levenshtrie<T, TCaseSensitivity> _trie;
+        private readonly LevenshtrieCore<T> _trie;
         private readonly TSearchState _initialState;
 
-        public SearchByPrefixEnumerable(Levenshtrie<T, TCaseSensitivity> trie, TSearchState initialState)
+        public SearchByPrefixEnumerable(LevenshtrieCore<T> trie, TSearchState initialState)
         {
             _trie = trie;
             _initialState = initialState;
@@ -476,25 +509,27 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
         public IEnumerator<T> GetEnumerator() => new SearchByPrefixEnumerator<TSearchState>(_trie, _initialState);
 
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
     private class SearchByPrefixEnumerator<TSearchState> : IEnumerator<T>
         where TSearchState : ILevenshtomatonExecutionState<TSearchState>
     {
-        private readonly Levenshtrie<T, TCaseSensitivity> _trie;
+        private readonly LevenshtrieCore<T> _trie;
         private readonly Stack<(int entryIndex, TSearchState searchState)> _state = new();
         private Stack<int>? _resultState = null;
+        private Cursor _cursor;
 
-        public SearchByPrefixEnumerator(Levenshtrie<T, TCaseSensitivity> trie, TSearchState initialState)
+        public SearchByPrefixEnumerator(LevenshtrieCore<T> trie, TSearchState initialState)
         {
             _trie = trie;
             _state.Push((entryIndex: 0, searchState: initialState));
+            _cursor = new Cursor(trie._results, NoIndex);
         }
 
         public T Current { get; private set; } = default!;
 
-        object IEnumerator.Current => Current!;
+        object System.Collections.IEnumerator.Current => Current!;
 
         public void Dispose() { }
 
@@ -502,6 +537,12 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         {
 
         restart:
+            if (_cursor.MoveNext(out var result))
+            {
+                Current = result;
+                return true;
+            }
+
             if (_resultState is not null)
             {
                 while (_resultState.TryPop(out var resultEntryIndex))
@@ -520,8 +561,8 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
                     if (nextEntry.ResultIndex is not NoIndex)
                     {
-                        Current = _trie._results[nextEntry.ResultIndex];
-                        return true;
+                        _cursor.ResetTo(nextEntry.ResultIndex);
+                        goto restart;
                     }
                 }
             }
@@ -556,8 +597,8 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
 
                     if (entry.ResultIndex is not NoIndex)
                     {
-                        Current = _trie._results[entry.ResultIndex];
-                        return true;
+                        _cursor.ResetTo(entry.ResultIndex);
+                        goto restart;
                     }
 
                     goto restart;
@@ -578,26 +619,7 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         public void Reset() => throw new NotSupportedException();
     }
 
-    public override void Add(string key, T value) => Set(key, value, isUpdating: false);
-
-    public override T this[string key]
-    {
-        get
-        {
-            if (TryGetValue(key, out var result))
-            {
-                return result;
-            }
-
-            throw new ArgumentOutOfRangeException(nameof(key));
-        }
-        set
-        {
-            Set(key, value, isUpdating: true);
-        }
-    }
-
-    private void Set(string key, T value, bool isUpdating)
+    public void Set(string key, T value, bool overwrite)
     {
         EnsureEntriesHasEmptySlots(2);
 
@@ -617,7 +639,7 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
             {
                 ref var childEntry = ref _entries[nextChildEntryIndex];
 
-                if (default(TCaseSensitivity).Equals(childEntry.EntryValue, nextRune))
+                if (AreEqual(childEntry.EntryValue, nextRune))
                 {
                     entry = ref childEntry;
                     found = true;
@@ -637,7 +659,7 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
                             Rune.DecodeFromUtf16(tailData, out var tailRune, out charsConsumed);
                             tailData = tailData[charsConsumed..];
 
-                            if (!default(TCaseSensitivity).Equals(nextRune, tailRune))
+                            if (!AreEqual(nextRune, tailRune))
                             {
                                 found = false;
                                 break;
@@ -688,90 +710,49 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
             }
         }
 
-        if (entry.ResultIndex == NoIndex)
+        var existingResultIndex = entry.ResultIndex;
+        if (existingResultIndex is not NoIndex && overwrite)
         {
-            EnsureResultsHasEmptySlots(spacesRequired: 1);
-
-            // Write result to results array
-            var resultIndex = _resultsSize;
-            _results[resultIndex] = value;
-            _resultsSize++;
-
-            entry.ResultIndex = resultIndex;
+            _results[existingResultIndex] = new Result
+            {
+                Value = value,
+                NextResultIndex = NoIndex
+            };
         }
-        else if (isUpdating)
+        else if (existingResultIndex is NoIndex || _allowMulti)
         {
-            _results[entry.ResultIndex] = value;
+            // Write result to results array
+            var resultIndex = TakeResultSlot();
+
+            if (existingResultIndex is not NoIndex && _allowMulti)
+            {
+                ref Result finalResultEntry = ref Unsafe.NullRef<Result>();
+
+                var nextExistingResultIndex = existingResultIndex;
+                while (nextExistingResultIndex is not NoIndex)
+                {
+                    finalResultEntry = ref _results[nextExistingResultIndex];
+                    nextExistingResultIndex = finalResultEntry.NextResultIndex;
+                }
+
+                finalResultEntry.NextResultIndex = resultIndex;
+            }
+            else
+            {
+                entry.ResultIndex = resultIndex;
+            }
+
+            _results[resultIndex] = new Result
+            {
+                Value = value,
+                NextResultIndex = NoIndex
+            };
+
+            _resultsSize++;
         }
         else
         {
             throw new ArgumentException("May not use this data structure with duplicate keys.", nameof(key));
-        }
-    }
-
-    public override void Remove(string key)
-    {
-        var entries = _entries;
-
-        ref var entry = ref _entries[0];
-        var keySpan = key.AsSpan();
-
-        while (keySpan.Length > 0)
-        {
-            Rune.DecodeFromUtf16(keySpan, out var nextRune, out var charsConsumed);
-            keySpan = keySpan[charsConsumed..];
-
-            var found = false;
-            var nextChildEntryIndex = entry.FirstChildEntryIndex;
-            while (nextChildEntryIndex != NoIndex)
-            {
-                entry = ref _entries[nextChildEntryIndex];
-
-                if (default(TCaseSensitivity).Equals(entry.EntryValue, nextRune))
-                {
-                    found = true;
-
-                    var entryTailDataLength = entry.TailDataLength;
-                    if (entryTailDataLength > 0)
-                    {
-                        var tailData = _tailData.AsSpan(entry.TailDataIndex, entry.TailDataLength);
-                        while (tailData.Length > 0 && keySpan.Length > 0)
-                        {
-                            Rune.DecodeFromUtf16(keySpan, out nextRune, out charsConsumed);
-                            keySpan = keySpan[charsConsumed..];
-
-                            Rune.DecodeFromUtf16(tailData, out var tailRune, out charsConsumed);
-                            tailData = tailData[charsConsumed..];
-
-                            if (!default(TCaseSensitivity).Equals(nextRune, tailRune))
-                            {
-                                return;
-                            }
-                        }
-
-                        if (tailData.Length > 0)
-                        {
-                            // We've consumed the key without consuming the tail data
-                            return;
-                        }
-                    }
-
-                    break;
-                }
-
-                nextChildEntryIndex = entry.NextSiblingEntryIndex;
-            }
-
-            if (!found)
-            {
-                return;
-            }
-        }
-
-        if (entry.ResultIndex is not NoIndex)
-        {
-            _results[entry.ResultIndex] = default!;
-            entry.ResultIndex = NoIndex;
         }
     }
 
@@ -783,9 +764,12 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         T value)
     {
         // Write result to results array
-        EnsureResultsHasEmptySlots(1);
-        var resultIndex = _resultsSize;
-        _results[_resultsSize++] = value;
+        var resultIndex = TakeResultSlot();
+        _results[resultIndex] = new Result
+        {
+            Value = value,
+            NextResultIndex = NoIndex
+        };
 
         Debug.Assert(
             splitParentEntryChars >= parentEntry.EntryValue.Utf16SequenceLength
@@ -880,6 +864,134 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         }
     }
 
+    public bool Remove(string key, bool all, T? matchingValue, IEqualityComparer<T> comparer)
+    {
+        var entries = _entries;
+
+        ref var entry = ref _entries[0];
+        var keySpan = key.AsSpan();
+
+        while (keySpan.Length > 0)
+        {
+            Rune.DecodeFromUtf16(keySpan, out var nextRune, out var charsConsumed);
+            keySpan = keySpan[charsConsumed..];
+
+            var found = false;
+            var nextChildEntryIndex = entry.FirstChildEntryIndex;
+            while (nextChildEntryIndex != NoIndex)
+            {
+                entry = ref _entries[nextChildEntryIndex];
+
+                if (AreEqual(entry.EntryValue, nextRune))
+                {
+                    found = true;
+
+                    var entryTailDataLength = entry.TailDataLength;
+                    if (entryTailDataLength > 0)
+                    {
+                        var tailData = _tailData.AsSpan(entry.TailDataIndex, entry.TailDataLength);
+                        while (tailData.Length > 0 && keySpan.Length > 0)
+                        {
+                            Rune.DecodeFromUtf16(keySpan, out nextRune, out charsConsumed);
+                            keySpan = keySpan[charsConsumed..];
+
+                            Rune.DecodeFromUtf16(tailData, out var tailRune, out charsConsumed);
+                            tailData = tailData[charsConsumed..];
+
+                            if (!AreEqual(nextRune, tailRune))
+                            {
+                                return false;
+                            }
+                        }
+
+                        if (tailData.Length > 0)
+                        {
+                            // We've consumed the key without consuming the tail data
+                            return false;
+                        }
+                    }
+
+                    break;
+                }
+
+                nextChildEntryIndex = entry.NextSiblingEntryIndex;
+            }
+
+            if (!found)
+            {
+                return false;
+            }
+        }
+
+        if (entry.ResultIndex is NoIndex)
+        {
+            return false;
+        }
+
+        // Here we need to find the right entries
+        // to be deleted and repair the linked list.
+
+        bool hasRemoved = false;
+
+        ref Result currResult = ref Unsafe.NullRef<Result>();
+        ref Result prevResult = ref Unsafe.NullRef<Result>();
+        var nextResultIndex = entry.ResultIndex;
+
+        while (nextResultIndex is not NoIndex)
+        {
+            currResult = ref _results[nextResultIndex];
+            var currResultIndex = nextResultIndex;
+            nextResultIndex = currResult.NextResultIndex;
+
+            if (all || comparer.Equals(currResult.Value, matchingValue))
+            {
+                hasRemoved = true;
+                AppendToFreeList(currResultIndex, ref currResult);
+                currResult.Value = default!;
+                if (Unsafe.IsNullRef(ref prevResult))
+                {
+                    entry.ResultIndex = nextResultIndex;
+                }
+                else
+                {
+                    prevResult.NextResultIndex = nextResultIndex;
+                }
+            }
+            else
+            {
+                // We only move the prev result if it's not deleted
+                // so that we can delete multiple consecutive entries
+                prevResult = ref currResult;
+            }
+        }
+
+        return hasRemoved;
+    }
+
+    private void AppendToFreeList(int resultIndex, ref Result result)
+    {
+        var prevFreeHeadIndex = _freeResultHeadIndex;
+        _freeResultHeadIndex = resultIndex;
+        result.NextResultIndex = prevFreeHeadIndex;
+        _freeResultCount++;
+    }
+
+    private int TakeResultSlot()
+    {
+        var freeIndex = _freeResultHeadIndex;
+        if (freeIndex is NoIndex)
+        {
+            EnsureResultsHasEmptySlots(spacesRequired: 1);
+            return _resultsSize++;
+        }
+        else
+        {
+            _freeResultCount--;
+            _freeResultHeadIndex = _results[freeIndex].NextResultIndex;
+            return freeIndex;
+        }
+    }
+
     private void EnsureEntriesHasEmptySlots(int spacesRequired)
     {
         while (_entries.Length - _entriesSize < spacesRequired)
@@ -911,8 +1023,9 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
             _ => currentSize * 2
         };
 
+
     [DebuggerDisplay("{EntryValue}")]
-    private struct Entry
+    internal struct Entry
     {
         public Rune EntryValue;
         public int TailDataIndex;
@@ -921,4 +1034,71 @@ internal sealed class Levenshtrie<T, TCaseSensitivity> :
         public int NextSiblingEntryIndex;
         public int ResultIndex;
     }
+
+    [DebuggerDisplay("{Value}")]
+    internal struct Result
+    {
+        public T Value;
+        public int NextResultIndex;
+    }
+
+    internal struct Cursor(Result[] results, int index)
+    {
+        private Result[] _results = results;
+        private int _index = index;
+
+        public void ResetTo(int index) => _index = index;
+
+        public bool MoveNext([MaybeNullWhen(false)] out T value)
+        {
+            if (_index is NoIndex)
+            {
+                value = default;
+                return false;
+            }
+
+            ref var result = ref _results[_index];
+            value = result.Value;
+            _index = result.NextResultIndex;
+            return true;
+        }
+    }
+}
+
+internal sealed class CaseSensitiveLevenshtrieCore<T> : LevenshtrieCore<T>
+{
+    public CaseSensitiveLevenshtrieCore(Entry root, bool allowMulti)
+        : base(root, allowMulti)
+    {
+
+    }
+
+    public override bool IgnoreCase => false;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private protected override bool AreEqual(Rune a, Rune b)
+        => default(CaseSensitive).Equals(a, b);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private protected override bool AreEqual(char a, char b)
+        => default(CaseSensitive).Equals(a, b);
+}
+
+internal sealed class CaseInsensitiveLevenshtrieCore<T> : LevenshtrieCore<T>
+{
+    public override bool IgnoreCase => true;
+
+    public CaseInsensitiveLevenshtrieCore(Entry root, bool allowMulti)
+        : base(root, allowMulti)
+    {
+
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private protected override bool AreEqual(Rune a, Rune b)
+        => default(CaseInsensitive).Equals(a, b);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private protected override bool AreEqual(char a, char b)
+        => default(CaseInsensitive).Equals(a, b);
 }

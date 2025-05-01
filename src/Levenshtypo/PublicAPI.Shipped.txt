@@ -7,19 +7,18 @@ abstract Levenshtypo.Levenshtomaton.Start() -> Levenshtypo.LevenshtomatonExecuti
 abstract Levenshtypo.LevenshtomatonExecutionState.Distance.get -> int
 abstract Levenshtypo.LevenshtomatonExecutionState.IsFinal.get -> bool
 abstract Levenshtypo.LevenshtomatonExecutionState.MoveNext(System.Text.Rune c, out Levenshtypo.LevenshtomatonExecutionState! next) -> bool
-abstract Levenshtypo.Levenshtrie<T>.Add(string! key, T value) -> void
-abstract Levenshtypo.Levenshtrie<T>.EnumerateSearch<TSearchState>(TSearchState searcher) -> System.Collections.Generic.IEnumerable<Levenshtypo.LevenshtrieSearchResult<T>>!
-abstract Levenshtypo.Levenshtrie<T>.Remove(string! key) -> void
-abstract Levenshtypo.Levenshtrie<T>.Search<TSearchState>(TSearchState searcher) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
-abstract Levenshtypo.Levenshtrie<T>.this[string! key].get -> T
-abstract Levenshtypo.Levenshtrie<T>.this[string! key].set -> void
-abstract Levenshtypo.Levenshtrie<T>.TryGetValue(string! key, out T value) -> bool
 Levenshtypo.ILevenshtomatonExecutionState<TSelf>
 Levenshtypo.ILevenshtomatonExecutionState<TSelf>.Distance.get -> int
 Levenshtypo.ILevenshtomatonExecutionState<TSelf>.IsFinal.get -> bool
 Levenshtypo.ILevenshtomatonExecutionState<TSelf>.MoveNext(System.Text.Rune c, out TSelf next) -> bool
 Levenshtypo.ILevenshtomatonExecutor<T>
 Levenshtypo.ILevenshtomatonExecutor<T>.ExecuteAutomaton<TState>(TState executionState) -> T
+Levenshtypo.ILevenshtrie<T>
+Levenshtypo.ILevenshtrie<T>.EnumerateSearch<TSearchState>(TSearchState searcher) -> System.Collections.Generic.IEnumerable<Levenshtypo.LevenshtrieSearchResult<T>>!
+Levenshtypo.ILevenshtrie<T>.EnumerateSearchByPrefix<TSearchState>(TSearchState searcher) -> System.Collections.Generic.IEnumerable<T>!
+Levenshtypo.ILevenshtrie<T>.IgnoreCase.get -> bool
+Levenshtypo.ILevenshtrie<T>.Search<TSearchState>(TSearchState searcher) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
+Levenshtypo.ILevenshtrie<T>.SearchByPrefix<TSearchState>(TSearchState searcher) -> T[]!
 Levenshtypo.LevenshteinDistance
 Levenshtypo.Levenshtomaton
 Levenshtypo.Levenshtomaton.Matches(System.ReadOnlySpan<char> text) -> bool
@@ -31,12 +30,32 @@ Levenshtypo.LevenshtomatonFactory
 Levenshtypo.LevenshtomatonFactory.Construct(string! s, int maxEditDistance, bool ignoreCase = false, Levenshtypo.LevenshtypoMetric metric = Levenshtypo.LevenshtypoMetric.Levenshtein) -> Levenshtypo.Levenshtomaton!
 Levenshtypo.Levenshtrie
 Levenshtypo.Levenshtrie<T>
-Levenshtypo.Levenshtrie<T>.EnumerateSearch(Levenshtypo.Levenshtomaton! automaton) -> System.Collections.Generic.IEnumerable<Levenshtypo.LevenshtrieSearchResult<T>>!
-Levenshtypo.Levenshtrie<T>.EnumerateSearch(Levenshtypo.LevenshtomatonExecutionState! searcher) -> System.Collections.Generic.IEnumerable<Levenshtypo.LevenshtrieSearchResult<T>>!
-Levenshtypo.Levenshtrie<T>.EnumerateSearch(string! text, int maxEditDistance, Levenshtypo.LevenshtypoMetric metric = Levenshtypo.LevenshtypoMetric.Levenshtein) -> System.Collections.Generic.IEnumerable<Levenshtypo.LevenshtrieSearchResult<T>>!
-Levenshtypo.Levenshtrie<T>.Search(Levenshtypo.Levenshtomaton! automaton) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
-Levenshtypo.Levenshtrie<T>.Search(Levenshtypo.LevenshtomatonExecutionState! searcher) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
-Levenshtypo.Levenshtrie<T>.Search(string! text, int maxEditDistance, Levenshtypo.LevenshtypoMetric metric = Levenshtypo.LevenshtypoMetric.Levenshtein) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
+Levenshtypo.Levenshtrie<T>.Add(string! key, T value) -> void
+Levenshtypo.Levenshtrie<T>.EnumerateSearch<TSearchState>(TSearchState searcher) -> System.Collections.Generic.IEnumerable<Levenshtypo.LevenshtrieSearchResult<T>>!
+Levenshtypo.Levenshtrie<T>.EnumerateSearchByPrefix<TSearchState>(TSearchState searcher) -> System.Collections.Generic.IEnumerable<T>!
+Levenshtypo.Levenshtrie<T>.Remove(string! key) -> bool
+Levenshtypo.Levenshtrie<T>.Search<TSearchState>(TSearchState searcher) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
+Levenshtypo.Levenshtrie<T>.SearchByPrefix<TSearchState>(TSearchState searcher) -> T[]!
+Levenshtypo.Levenshtrie<T>.this[string! key].get -> T
+Levenshtypo.Levenshtrie<T>.this[string! key].set -> void
+Levenshtypo.Levenshtrie<T>.TryGetValue(string! key, out T value) -> bool
+Levenshtypo.LevenshtrieExtensions
+Levenshtypo.LevenshtrieMultiMap<T>
+Levenshtypo.LevenshtrieMultiMap<T>.Add(string! key, T value) -> void
+Levenshtypo.LevenshtrieMultiMap<T>.EnumerateSearch<TSearchState>(TSearchState searcher) -> System.Collections.Generic.IEnumerable<Levenshtypo.LevenshtrieSearchResult<T>>!
+Levenshtypo.LevenshtrieMultiMap<T>.EnumerateSearchByPrefix<TSearchState>(TSearchState searcher) -> System.Collections.Generic.IEnumerable<T>!
+Levenshtypo.LevenshtrieMultiMap<T>.GetValues(string! key) -> Levenshtypo.LevenshtrieMultiMap<T>.GetValuesResult
+Levenshtypo.LevenshtrieMultiMap<T>.GetValuesEnumerator
+Levenshtypo.LevenshtrieMultiMap<T>.GetValuesEnumerator.Current.get -> T
+Levenshtypo.LevenshtrieMultiMap<T>.GetValuesEnumerator.GetValuesEnumerator() -> void
+Levenshtypo.LevenshtrieMultiMap<T>.GetValuesEnumerator.MoveNext() -> bool
+Levenshtypo.LevenshtrieMultiMap<T>.GetValuesResult
+Levenshtypo.LevenshtrieMultiMap<T>.GetValuesResult.GetEnumerator() -> Levenshtypo.LevenshtrieMultiMap<T>.GetValuesEnumerator
+Levenshtypo.LevenshtrieMultiMap<T>.GetValuesResult.GetValuesResult() -> void
+Levenshtypo.LevenshtrieMultiMap<T>.Remove(string! key, T value, System.Collections.Generic.IEqualityComparer<T>! comparer) -> bool
+Levenshtypo.LevenshtrieMultiMap<T>.RemoveAll(string! key) -> bool
+Levenshtypo.LevenshtrieMultiMap<T>.Search<TSearchState>(TSearchState searcher) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
+Levenshtypo.LevenshtrieMultiMap<T>.SearchByPrefix<TSearchState>(TSearchState searcher) -> T[]!
 Levenshtypo.LevenshtrieSearchResult<T>
 Levenshtypo.LevenshtrieSearchResult<T>.Distance.get -> int
 Levenshtypo.LevenshtrieSearchResult<T>.LevenshtrieSearchResult() -> void
@@ -52,5 +71,21 @@ static Levenshtypo.LevenshtomatonExecutionState.FromStruct<TState>(TState state)
 static Levenshtypo.LevenshtomatonFactory.Instance.get -> Levenshtypo.LevenshtomatonFactory!
 static Levenshtypo.Levenshtrie.Create<T>(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, T>>! source, bool ignoreCase = false) -> Levenshtypo.Levenshtrie<T>!
 static Levenshtypo.Levenshtrie.CreateEmpty<T>(bool ignoreCase = false) -> Levenshtypo.Levenshtrie<T>!
+static Levenshtypo.Levenshtrie.CreateEmptyMulti<T>(bool ignoreCase = false) -> Levenshtypo.LevenshtrieMultiMap<T>!
+static Levenshtypo.Levenshtrie.CreateMulti<T>(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, T>>! source, bool ignoreCase = false) -> Levenshtypo.LevenshtrieMultiMap<T>!
 static Levenshtypo.Levenshtrie.CreateStrings(System.Collections.Generic.IEnumerable<string!>! source, bool ignoreCase = false) -> Levenshtypo.Levenshtrie<string!>!
+static Levenshtypo.Levenshtrie.CreateStringsMulti(System.Collections.Generic.IEnumerable<string!>! source, bool ignoreCase = false) -> Levenshtypo.LevenshtrieMultiMap<string!>!
 static Levenshtypo.Levenshtrie<T>.Create(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, T>>! source, bool ignoreCase = false) -> Levenshtypo.Levenshtrie<T>!
+static Levenshtypo.LevenshtrieExtensions.EnumerateSearch<T>(this Levenshtypo.ILevenshtrie<T>! this, Levenshtypo.Levenshtomaton! automaton) -> System.Collections.Generic.IEnumerable<Levenshtypo.LevenshtrieSearchResult<T>>!
+static Levenshtypo.LevenshtrieExtensions.EnumerateSearch<T>(this Levenshtypo.ILevenshtrie<T>! this, Levenshtypo.LevenshtomatonExecutionState! searcher) -> System.Collections.Generic.IEnumerable<Levenshtypo.LevenshtrieSearchResult<T>>!
+static Levenshtypo.LevenshtrieExtensions.EnumerateSearch<T>(this Levenshtypo.ILevenshtrie<T>! this, string! text, int maxEditDistance, Levenshtypo.LevenshtypoMetric metric = Levenshtypo.LevenshtypoMetric.Levenshtein) -> System.Collections.Generic.IEnumerable<Levenshtypo.LevenshtrieSearchResult<T>>!
+static Levenshtypo.LevenshtrieExtensions.EnumerateSearchByPrefix<T>(this Levenshtypo.ILevenshtrie<T>! this, Levenshtypo.Levenshtomaton! automaton) -> System.Collections.Generic.IEnumerable<T>!
+static Levenshtypo.LevenshtrieExtensions.EnumerateSearchByPrefix<T>(this Levenshtypo.ILevenshtrie<T>! this, Levenshtypo.LevenshtomatonExecutionState! searcher) -> System.Collections.Generic.IEnumerable<T>!
+static Levenshtypo.LevenshtrieExtensions.EnumerateSearchByPrefix<T>(this Levenshtypo.ILevenshtrie<T>! this, string! text, int maxEditDistance, Levenshtypo.LevenshtypoMetric metric = Levenshtypo.LevenshtypoMetric.Levenshtein) -> System.Collections.Generic.IEnumerable<T>!
+static Levenshtypo.LevenshtrieExtensions.Search<T>(this Levenshtypo.ILevenshtrie<T>! this, Levenshtypo.Levenshtomaton! automaton) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
+static Levenshtypo.LevenshtrieExtensions.Search<T>(this Levenshtypo.ILevenshtrie<T>! this, Levenshtypo.LevenshtomatonExecutionState! searcher) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
+static Levenshtypo.LevenshtrieExtensions.Search<T>(this Levenshtypo.ILevenshtrie<T>! this, string! text, int maxEditDistance, Levenshtypo.LevenshtypoMetric metric = Levenshtypo.LevenshtypoMetric.Levenshtein) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
+static Levenshtypo.LevenshtrieExtensions.SearchByPrefix<T>(this Levenshtypo.ILevenshtrie<T>! this, Levenshtypo.Levenshtomaton! automaton) -> T[]!
+static Levenshtypo.LevenshtrieExtensions.SearchByPrefix<T>(this Levenshtypo.ILevenshtrie<T>! this, Levenshtypo.LevenshtomatonExecutionState! searcher) -> T[]!
+static Levenshtypo.LevenshtrieExtensions.SearchByPrefix<T>(this Levenshtypo.ILevenshtrie<T>! this, string! text, int maxEditDistance, Levenshtypo.LevenshtypoMetric metric = Levenshtypo.LevenshtypoMetric.Levenshtein) -> T[]!
+static Levenshtypo.LevenshtrieMultiMap<T>.Create(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, T>>! source, bool ignoreCase = false) -> Levenshtypo.LevenshtrieMultiMap<T>!

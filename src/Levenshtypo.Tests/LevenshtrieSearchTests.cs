@@ -93,6 +93,30 @@ public class LevenshtrieSearchTests
         Test(t, entries[^1], 1, [(entries[^2], 1), (entries[^1], 0)]);
     }
 
+    [Fact]
+    public void MultiMap()
+    {
+        var t = Levenshtrie.CreateEmptyMulti<string>(ignoreCase: false);
+
+        t.Add("00001", "1");
+        t.Add("00001", "2");
+        t.Add("00002", "3");
+        t.Add("00033", "4");
+        t.Add("00004", "5");
+        t.Add("00004", "6");
+        t.Add("00004", "7");
+
+        t.Search("00001", maxEditDistance: 1)
+            .Select(r => r.Result)
+            .ToArray()
+            .ShouldBe(["1", "2", "3", "5", "6", "7"], ignoreOrder: true, comparer: StringComparer.OrdinalIgnoreCase);
+
+        t.SearchByPrefix("00", maxEditDistance: 0)
+            .ToArray()
+            .ShouldBe(["1", "2", "3", "4", "5", "6", "7"], ignoreOrder: true, comparer: StringComparer.OrdinalIgnoreCase);
+
+    }
+
     private static void Test(Levenshtrie<string> t, string query, int distance, IEnumerable<string> expected)
     {
         Test(t, query, distance, expected.Select(e => (e, LevenshteinDistance.Calculate(query, e))));

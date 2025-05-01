@@ -11,7 +11,7 @@ internal class BitwiseLevenshteinLevenshtomaton<TCaseSensitivity> : Levenshtomat
 {
     private const int MaxSupportedEditDistance = 30;
 
-    private Rune[] _sRune;
+    private readonly Rune[] _sRune;
 
     public BitwiseLevenshteinLevenshtomaton(string s, int maxEditDistance) : base(s, maxEditDistance)
     {

@@ -1,9 +1,1 @@
 ﻿#nullable enable
-abstract Levenshtypo.Levenshtrie<T>.EnumerateSearchByPrefix<TSearchState>(TSearchState searcher) -> System.Collections.Generic.IEnumerable<T>!
-abstract Levenshtypo.Levenshtrie<T>.SearchByPrefix<TSearchState>(TSearchState searcher) -> T[]!
-Levenshtypo.Levenshtrie<T>.EnumerateSearchByPrefix(Levenshtypo.Levenshtomaton! automaton) -> System.Collections.Generic.IEnumerable<T>!
-Levenshtypo.Levenshtrie<T>.EnumerateSearchByPrefix(Levenshtypo.LevenshtomatonExecutionState! searcher) -> System.Collections.Generic.IEnumerable<T>!
-Levenshtypo.Levenshtrie<T>.EnumerateSearchByPrefix(string! text, int maxEditDistance, Levenshtypo.LevenshtypoMetric metric = Levenshtypo.LevenshtypoMetric.Levenshtein) -> System.Collections.Generic.IEnumerable<T>!
-Levenshtypo.Levenshtrie<T>.SearchByPrefix(Levenshtypo.Levenshtomaton! automaton) -> T[]!
-Levenshtypo.Levenshtrie<T>.SearchByPrefix(Levenshtypo.LevenshtomatonExecutionState! searcher) -> T[]!
-Levenshtypo.Levenshtrie<T>.SearchByPrefix(string! text, int maxEditDistance, Levenshtypo.LevenshtypoMetric metric = Levenshtypo.LevenshtypoMetric.Levenshtein) -> T[]!

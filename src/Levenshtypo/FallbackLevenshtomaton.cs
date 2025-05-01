@@ -55,7 +55,7 @@ internal class FallbackLevenshtomaton<TCaseSensitivity> : Levenshtomaton where T
         };
     }
 
-    private struct LevenshteinState : ILevenshtomatonExecutionState<LevenshteinState>
+    private readonly struct LevenshteinState : ILevenshtomatonExecutionState<LevenshteinState>
     {
         private readonly Rune[] _sRunes;
         private readonly int _cIndex;
@@ -119,7 +119,7 @@ internal class FallbackLevenshtomaton<TCaseSensitivity> : Levenshtomaton where T
         public int Distance => _state[^1];
     }
 
-    private struct RestrictedEditState : ILevenshtomatonExecutionState<RestrictedEditState>
+    private readonly struct RestrictedEditState : ILevenshtomatonExecutionState<RestrictedEditState>
     {
         private readonly Rune[] _sRunes;
         private readonly int _cIndex;
