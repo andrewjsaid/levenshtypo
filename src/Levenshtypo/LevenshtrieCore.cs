@@ -619,18 +619,17 @@ internal abstract class LevenshtrieCore<T>
         public void Reset() => throw new NotSupportedException();
     }
 
-    public void Set(string key, T value, bool overwrite)
+    public void Set(ReadOnlySpan<char> key, T value, bool overwrite)
     {
         EnsureEntriesHasEmptySlots(2);
 
         var entries = _entries;
         ref var entry = ref _entries[0];
-        var keySpan = key.AsSpan();
 
-        while (keySpan.Length > 0)
+        while (key.Length > 0)
         {
-            Rune.DecodeFromUtf16(keySpan, out var nextRune, out var charsConsumed);
-            keySpan = keySpan[charsConsumed..];
+            Rune.DecodeFromUtf16(key, out var nextRune, out var charsConsumed);
+            key = key[charsConsumed..];
 
             var found = false;
 
@@ -651,10 +650,10 @@ internal abstract class LevenshtrieCore<T>
                     if (entryTailDataLength > 0)
                     {
                         var tailData = _tailData.AsSpan(childEntry.TailDataIndex, childEntry.TailDataLength);
-                        while (tailData.Length > 0 && keySpan.Length > 0)
+                        while (tailData.Length > 0 && key.Length > 0)
                         {
-                            Rune.DecodeFromUtf16(keySpan, out nextRune, out charsConsumed);
-                            keySpan = keySpan[charsConsumed..];
+                            Rune.DecodeFromUtf16(key, out nextRune, out charsConsumed);
+                            key = key[charsConsumed..];
 
                             Rune.DecodeFromUtf16(tailData, out var tailRune, out charsConsumed);
                             tailData = tailData[charsConsumed..];
@@ -686,7 +685,7 @@ internal abstract class LevenshtrieCore<T>
                         else
                         {
                             // The new node branches off at some point along this head / tail data
-                            Branch(ref childEntry, charsMatched, nextRune, keySpan, value);
+                            Branch(ref childEntry, charsMatched, nextRune, key, value);
                         }
 
                         return;
@@ -704,7 +703,7 @@ internal abstract class LevenshtrieCore<T>
                     ref entry,
                     entry.EntryValue.Utf16SequenceLength + entry.TailDataLength,
                     nextRune,
-                    keySpan,
+                    key,
                     value);
                 return;
             }
@@ -864,17 +863,16 @@ internal abstract class LevenshtrieCore<T>
         }
     }
 
-    public bool Remove(string key, bool all, T? matchingValue, IEqualityComparer<T> comparer)
+    public bool Remove(ReadOnlySpan<char> key, bool all, T? matchingValue, IEqualityComparer<T> comparer)
     {
         var entries = _entries;
 
         ref var entry = ref _entries[0];
-        var keySpan = key.AsSpan();
 
-        while (keySpan.Length > 0)
+        while (key.Length > 0)
         {
-            Rune.DecodeFromUtf16(keySpan, out var nextRune, out var charsConsumed);
-            keySpan = keySpan[charsConsumed..];
+            Rune.DecodeFromUtf16((ReadOnlySpan<char>)key, out var nextRune, out var charsConsumed);
+            key = key[charsConsumed..];
 
             var found = false;
             var nextChildEntryIndex = entry.FirstChildEntryIndex;
@@ -890,10 +888,10 @@ internal abstract class LevenshtrieCore<T>
                     if (entryTailDataLength > 0)
                     {
                         var tailData = _tailData.AsSpan(entry.TailDataIndex, entry.TailDataLength);
-                        while (tailData.Length > 0 && keySpan.Length > 0)
+                        while (tailData.Length > 0 && key.Length > 0)
                         {
-                            Rune.DecodeFromUtf16(keySpan, out nextRune, out charsConsumed);
-                            keySpan = keySpan[charsConsumed..];
+                            Rune.DecodeFromUtf16((ReadOnlySpan<char>)key, out nextRune, out charsConsumed);
+                            key = key[charsConsumed..];
 
                             Rune.DecodeFromUtf16(tailData, out var tailRune, out charsConsumed);
                             tailData = tailData[charsConsumed..];

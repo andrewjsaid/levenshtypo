@@ -45,12 +45,7 @@ Levenshtypo.LevenshtrieMultiMap<T>.Add(string! key, T value) -> void
 Levenshtypo.LevenshtrieMultiMap<T>.EnumerateSearch<TSearchState>(TSearchState searcher) -> System.Collections.Generic.IEnumerable<Levenshtypo.LevenshtrieSearchResult<T>>!
 Levenshtypo.LevenshtrieMultiMap<T>.EnumerateSearchByPrefix<TSearchState>(TSearchState searcher) -> System.Collections.Generic.IEnumerable<T>!
 Levenshtypo.LevenshtrieMultiMap<T>.GetValues(string! key) -> Levenshtypo.LevenshtrieMultiMap<T>.GetValuesResult
-Levenshtypo.LevenshtrieMultiMap<T>.GetValuesEnumerator
-Levenshtypo.LevenshtrieMultiMap<T>.GetValuesEnumerator.Current.get -> T
-Levenshtypo.LevenshtrieMultiMap<T>.GetValuesEnumerator.GetValuesEnumerator() -> void
-Levenshtypo.LevenshtrieMultiMap<T>.GetValuesEnumerator.MoveNext() -> bool
 Levenshtypo.LevenshtrieMultiMap<T>.GetValuesResult
-Levenshtypo.LevenshtrieMultiMap<T>.GetValuesResult.GetEnumerator() -> Levenshtypo.LevenshtrieMultiMap<T>.GetValuesEnumerator
 Levenshtypo.LevenshtrieMultiMap<T>.GetValuesResult.GetValuesResult() -> void
 Levenshtypo.LevenshtrieMultiMap<T>.Remove(string! key, T value, System.Collections.Generic.IEqualityComparer<T>! comparer) -> bool
 Levenshtypo.LevenshtrieMultiMap<T>.RemoveAll(string! key) -> bool

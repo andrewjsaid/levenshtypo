@@ -5,8 +5,20 @@ using System.Collections.Generic;
 namespace Levenshtypo;
 
 /// <summary>
-/// A data structure capable of associating strings with values and fuzzy lookups on those strings.
+/// Represents a trie-based associative data structure that supports approximate string matching
+/// and allows multiple values to be associated with the same key.
+///
+/// <para>
+/// This class is similar to <see cref="Levenshtrie{T}"/>, but allows storing multiple values
+/// under a single string key, enabling grouping-like behavior.
+/// </para>
+///
+/// <para>
+/// Supports fuzzy and prefix-based lookups via Levenshtein automatons, and is optimized
+/// for fast read performance. Writes are not thread-safe.
+/// </para>
 /// </summary>
+/// <typeparam name="T">The type of values stored in the trie.</typeparam>
 public sealed class LevenshtrieMultiMap<T> :
     ILevenshtrie<T>,
     ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>,
@@ -24,8 +36,14 @@ public sealed class LevenshtrieMultiMap<T> :
     bool ILevenshtrie<T>.IgnoreCase => _coreTrie.IgnoreCase;
 
     /// <summary>
-    /// Builds a tree from the given associations between strings and values.
+    /// Creates a new <see cref="LevenshtrieMultiMap{T}"/> from a sequence of key-value pairs.
+    /// Allows duplicate keys, each associated with one or more values.
     /// </summary>
+    /// <param name="source">The sequence of string-value pairs to populate the trie with.</param>
+    /// <param name="ignoreCase">
+    /// When <c>true</c>, the trie will perform case-insensitive comparisons using invariant culture.
+    /// </param>
+    /// <returns>A new <see cref="LevenshtrieMultiMap{T}"/> instance.</returns>
     public static LevenshtrieMultiMap<T> Create(IEnumerable<KeyValuePair<string, T>> source, bool ignoreCase = false)
     {
         var coreTrie = LevenshtrieCore<T>.Create(source, ignoreCase, allowMulti: true);
@@ -33,8 +51,10 @@ public sealed class LevenshtrieMultiMap<T> :
     }
 
     /// <summary>
-    /// Finds the values associated with the specified key.
+    /// Retrieves all values associated with the specified key.
     /// </summary>
+    /// <param name="key">The key to retrieve values for.</param>
+    /// <returns>An enumerable of values associated with the key. Returns empty if no matches found.</returns>
     public GetValuesResult GetValues(string key)
     {
         var values = _coreTrie.GetValues(key);
@@ -70,60 +90,91 @@ public sealed class LevenshtrieMultiMap<T> :
     SearchByPrefixWrapper<IEnumerable<T>> ILevenshtomatonExecutor<SearchByPrefixWrapper<IEnumerable<T>>>.ExecuteAutomaton<TState>(TState executionState) => new(EnumerateSearchByPrefix(executionState));
 
     /// <summary>
-    /// Adds a key / value pair to the trie.
+    /// Adds a new value under the specified key.
     /// </summary>
+    /// <param name="key">The key to associate the value with.</param>
+    /// <param name="value">The value to add.</param>
     public void Add(string key, T value)
         => _coreTrie.Set(key, value, overwrite: false);
 
     /// <summary>
-    /// Removes all values associated by a specific key from the trie.
+    /// Adds a new value under the specified key.
     /// </summary>
-    /// <returns>Returns <c>true</c> if any entry was removed; <c>false</c> otherwise.</returns>
+    /// <param name="key">The key to associate the value with.</param>
+    /// <param name="value">The value to add.</param>
+    public void Add(ReadOnlySpan<char> key, T value)
+        => _coreTrie.Set(key, value, overwrite: false);
+
+    /// <summary>
+    /// Removes all values associated with the specified key.
+    /// </summary>
+    /// <param name="key">The key to remove.</param>
+    /// <returns><c>true</c> if any values were removed; otherwise, <c>false</c>.</returns>
     public bool RemoveAll(string key)
+        => _coreTrie.Remove(key, all: true, default, EqualityComparer<T>.Default);
+    
+    /// <summary>
+    /// Removes all values associated with the specified key.
+    /// </summary>
+    /// <param name="key">The key to remove.</param>
+    /// <returns><c>true</c> if any values were removed; otherwise, <c>false</c>.</returns>
+    public bool RemoveAll(ReadOnlySpan<char> key)
         => _coreTrie.Remove(key, all: true, default, EqualityComparer<T>.Default);
 
     /// <summary>
-    /// Removes a specific value associated by a specific key from the trie.
+    /// Removes a specific value associated with a given key.
     /// </summary>
-    /// <returns>Returns <c>true</c> if any entry was removed; <c>false</c> otherwise.</returns>
+    /// <param name="key">The key under which the value is stored.</param>
+    /// <param name="value">The value to remove.</param>
+    /// <param name="comparer">The equality comparer used to match the value.</param>
+    /// <returns><c>true</c> if the value was found and removed; otherwise, <c>false</c>.</returns>
     public bool Remove(string key, T value, IEqualityComparer<T> comparer)
          => _coreTrie.Remove(key, all: false, value, comparer);
 
-    public struct GetValuesResult : IEnumerable<T>
-    {
-        private LevenshtrieCore<T>.Cursor _cursor;
+    /// <summary>
+    /// Removes a specific value associated with a given key.
+    /// </summary>
+    /// <param name="key">The key under which the value is stored.</param>
+    /// <param name="value">The value to remove.</param>
+    /// <param name="comparer">The equality comparer used to match the value.</param>
+    /// <returns><c>true</c> if the value was found and removed; otherwise, <c>false</c>.</returns>
+    public bool Remove(ReadOnlySpan<char> key, T value, IEqualityComparer<T> comparer)
+         => _coreTrie.Remove(key, all: false, value, comparer);
 
-        internal GetValuesResult(LevenshtrieCore<T>.Cursor cursor)
-        {
-            _cursor = cursor;
-        }
-
-        public GetValuesEnumerator GetEnumerator() => new GetValuesEnumerator(_cursor);
-
-        IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-    }
-
-    public struct GetValuesEnumerator : IEnumerator<T>
+    /// <summary>
+    /// Represents the result of a key lookup, which can be enumerated to yield values
+    /// stored under that key.
+    /// </summary>
+    public struct GetValuesResult : IEnumerable<T>, IEnumerator<T>
     {
         private LevenshtrieCore<T>.Cursor _cursor;
         private T _current;
 
-        internal GetValuesEnumerator(LevenshtrieCore<T>.Cursor cursor)
+        internal GetValuesResult(LevenshtrieCore<T>.Cursor cursor)
         {
             _cursor = cursor;
             _current = default!;
         }
 
+        /// <inheritdoc />
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() => this;
+
+        /// <inheritdoc />
+        IEnumerator IEnumerable.GetEnumerator() => this;
+
+        /// <inheritdoc />
         public T Current => _current;
 
+        /// <inheritdoc />
         object IEnumerator.Current => Current!;
 
+        /// <inheritdoc />
         public bool MoveNext() => _cursor.MoveNext(out _current!);
 
+        /// <inheritdoc />
         void IDisposable.Dispose() { }
 
+        /// <inheritdoc />
         void IEnumerator.Reset() => throw new NotSupportedException();
     }
 }

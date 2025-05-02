@@ -3,56 +3,90 @@
 namespace Levenshtypo;
 
 /// <summary>
-/// Represents execution of an automaton.
+/// Defines a value-type representation of an automaton execution state that can be advanced
+/// over Unicode scalar values (<see cref="Rune"/>).
 /// </summary>
+/// <typeparam name="TSelf">
+/// The implementing type itself. This is a self-referential generic constraint used to enable
+/// efficient, allocation-free execution and avoid boxing during state transitions.
+/// </typeparam>
 /// <remarks>
-/// The generics here is to balance power and performance.
-/// It allows for double dispatch to avoid boxing.
-/// In using this format of generics (struct), the users of this interface
-/// will force the JIT to compile a specialized method for each type of struct.
+/// This interface is designed for high-performance execution of Levenshtomata. By requiring
+/// that <typeparamref name="TSelf"/> be a <c>struct</c>, the JIT can specialize and inline
+/// automaton logic, avoiding interface dispatch and heap allocations.
+///
+/// <para>
+/// This design pattern enables double dispatch over `struct`-based states, allowing efficient
+/// traversal without sacrificing polymorphism.
+/// </para>
 /// </remarks>
 public interface ILevenshtomatonExecutionState<TSelf> where TSelf : ILevenshtomatonExecutionState<TSelf>
 {
     /// <summary>
-    /// Consume a character in the input string, advancing the automaton to the next state.
+    /// Advances the automaton to its next state by consuming a Unicode scalar value.
     /// </summary>
-    /// <param name="c">The character being consumed.</param>
-    /// <param name="next">The next state of the automaton, after the character has been consumed.</param>
-    /// <returns>Whether a next state was found.</returns>
+    /// <param name="c">The Unicode scalar value (<see cref="Rune"/>) to consume.</param>
+    /// <param name="next">
+    /// When this method returns <c>true</c>, contains the resulting state after the transition.
+    /// When it returns <c>false</c>, the transition was invalid and no next state exists.
+    /// </param>
+    /// <returns>
+    /// <c>true</c> if a valid state transition was found for <paramref name="c"/>; otherwise, <c>false</c>.
+    /// </returns>
     bool MoveNext(Rune c, out TSelf next);
 
     /// <summary>
-    /// When true, the characters leading up to this state form text
-    /// which is within the Levenshtein Distance of the original
-    /// text.
+    /// Gets a value indicating whether the current state is a final (accepting) state.
     /// </summary>
+    /// <remarks>
+    /// A final state indicates that the characters consumed so far form a string that is
+    /// within the configured edit distance of the reference string.
+    /// </remarks>
     bool IsFinal { get; }
 
     /// <summary>
-    /// For final states, this is the edit distance representing
-    /// the underlying string with the characters consumed so far.
+    /// Gets the edit distance between the consumed input and the reference string
+    /// when in a final (accepting) state.
     /// </summary>
+    /// <remarks>
+    /// The value is meaningful only when <see cref="IsFinal"/> is <c>true</c>.
+    /// </remarks>
     int Distance { get; }
 }
 
 /// <summary>
-/// Represents execution of an automaton.
+/// Represents a boxed, reference-type version of an automaton execution state.
 /// </summary>
 /// <remarks>
-/// This version of the automaton execution state relies on boxing and
-/// should be avoided in performance critical scenarios.
+/// This class enables execution of a Levenshtomaton using a polymorphic interface
+/// without requiring knowledge of the underlying struct implementation.
+///
+/// <para>
+/// While easier to work with in general-purpose APIs, this abstraction introduces
+/// boxing and is not suitable for performance-critical or allocation-sensitive scenarios.
+/// </para>
 /// </remarks>
 public abstract class LevenshtomatonExecutionState : ILevenshtomatonExecutionState<LevenshtomatonExecutionState>
 {
+    /// <inheritdoc />
     public abstract bool MoveNext(Rune c, out LevenshtomatonExecutionState next);
 
+    /// <inheritdoc />
     public abstract bool IsFinal { get; }
 
+    /// <inheritdoc />
     public abstract int Distance { get; }
 
     /// <summary>
-    /// Wraps a struct implementation of <see cref="ILevenshtomatonExecutionState{TSelf}"/> into a class.
+    /// Wraps a value-type automaton state into a reference-type <see cref="LevenshtomatonExecutionState"/>.
     /// </summary>
+    /// <typeparam name="TState">
+    /// The struct type implementing <see cref="ILevenshtomatonExecutionState{TState}"/>.
+    /// </typeparam>
+    /// <param name="state">The value-type execution state to wrap.</param>
+    /// <returns>
+    /// A boxed <see cref="LevenshtomatonExecutionState"/> that delegates to the original struct implementation.
+    /// </returns>
     public static LevenshtomatonExecutionState FromStruct<TState>(TState state) where TState : struct, ILevenshtomatonExecutionState<TState>
     {
         return new StructWrappedLevenshtomatonExecutionState<TState>(state);

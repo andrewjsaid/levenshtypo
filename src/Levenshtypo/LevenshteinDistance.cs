@@ -6,12 +6,32 @@ using System.Text;
 namespace Levenshtypo;
 
 /// <summary>
-/// Static calculator for Levenshtein distance.
+/// Provides static methods for computing Levenshtein-style edit distances between strings or spans,
+/// with support for Unicode-awareness, configurable case sensitivity, and multiple distance metrics.
 /// </summary>
+/// <remarks>
+/// All methods are allocation-aware and make use of stackalloc and array pooling internally
+/// to reduce GC pressure. These routines operate over <see cref="ReadOnlySpan{Char}"/> inputs
+/// and support both char-based and rune-based traversal, depending on the presence of surrogate pairs.
+/// </remarks>
 public static class LevenshteinDistance
 {
     private const int MaxStackallocBytes = 48 * 4;
 
+    /// <summary>
+    /// Computes the edit distance between two strings using the specified distance metric.
+    /// </summary>
+    /// <param name="a">The first string to compare.</param>
+    /// <param name="b">The second string to compare.</param>
+    /// <param name="ignoreCase">
+    /// When <c>true</c>, performs case-insensitive comparisons using invariant culture semantics.
+    /// </param>
+    /// <param name="metric">
+    /// The edit distance algorithm to use. See <see cref="LevenshtypoMetric"/> for supported options.
+    /// </param>
+    /// <returns>
+    /// The minimum number of edits required to transform <paramref name="a"/> into <paramref name="b"/>.
+    /// </returns>
     public static int Calculate(ReadOnlySpan<char> a, ReadOnlySpan<char> b, bool ignoreCase = false, LevenshtypoMetric metric = LevenshtypoMetric.Levenshtein)
     {
         return metric switch
@@ -23,8 +43,12 @@ public static class LevenshteinDistance
     }
 
     /// <summary>
-    /// Calculates the levenshtein distance between two strings.
+    /// Computes the classic Levenshtein distance between two strings, optionally ignoring case.
     /// </summary>
+    /// <param name="a">The source string.</param>
+    /// <param name="b">The target string.</param>
+    /// <param name="ignoreCase">Whether to perform a case-insensitive comparison.</param>
+    /// <returns>The Levenshtein distance between the two inputs.</returns>
     public static int Levenshtein(ReadOnlySpan<char> a, ReadOnlySpan<char> b, bool ignoreCase = false)
     {
         if (!ContainsSurrogate(a) && !ContainsSurrogate(b))
@@ -163,9 +187,13 @@ public static class LevenshteinDistance
     }
 
     /// <summary>
-    /// Calculates the Restricted Edit Distance (a.k.a. Optimal String Alignment Distance)
-    /// between two strings.
+    /// Computes the Restricted Edit Distance (Optimal String Alignment) between two strings,
+    /// optionally ignoring case.
     /// </summary>
+    /// <param name="a">The source string.</param>
+    /// <param name="b">The target string.</param>
+    /// <param name="ignoreCase">Whether to perform a case-insensitive comparison.</param>
+    /// <returns>The restricted edit distance between the two inputs.</returns>
     public static int RestrictedEdit(ReadOnlySpan<char> a, ReadOnlySpan<char> b, bool ignoreCase = false)
     {
         if (!ContainsSurrogate(a) && !ContainsSurrogate(b))
@@ -316,6 +344,10 @@ public static class LevenshteinDistance
         return d0[b.Length];
     }
 
+    /// <summary>
+    /// Computes Levenshtein distance using a generic value comparer for either char or Rune types.
+    /// This method is used internally to unify Unicode-aware and ASCII-based execution paths.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool CharEquals<T, TCaseSensitivity>(T a, T b)
         where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>

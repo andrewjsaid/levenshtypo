@@ -3,32 +3,75 @@
 namespace Levenshtypo;
 
 /// <summary>
-/// Entry point for creating Levenshtomatons.
-/// It is intended to have a single one per application since the internal cache is 
-/// basically a constant State Machine.
+/// Provides a high-performance factory for constructing <see cref="Levenshtomaton"/> instances,
+/// which are deterministic finite automatons (DFAs) optimized for evaluating Levenshtein distances
+/// between strings.
+///
+/// <para>This factory is intended to be used as a singleton via <see cref="Instance"/>.
+/// Internally, it caches parameterized state machine templates for performance when constructing
+/// automatons with higher edit distances.</para>
+///
+/// <para>The factory and the automatons it creates are thread-safe and may be used concurrently
+/// from multiple threads.</para>
 /// </summary>
 public sealed class LevenshtomatonFactory
 {
     private ParameterizedLevenshtomaton.Template? _d3Levenshtein;
     private ParameterizedLevenshtomaton.Template? _d3RestrictedEdit;
 
+    /// <summary>
+    /// Prevents external construction. Use the <see cref="Instance"/> singleton instead.
+    /// </summary>
     internal LevenshtomatonFactory() { }
 
+    /// <summary>
+    /// Gets the global singleton instance of the <see cref="LevenshtomatonFactory"/>.
+    /// </summary>
     public static LevenshtomatonFactory Instance { get; } = new ();
 
     /// <summary>
-    /// Construct a <see cref="Levenshtomaton"/> which accepts only strings
-    /// with maximum edit distance from <see cref="s"/>.
+    /// Constructs a <see cref="Levenshtomaton"/> that accepts strings within a specified
+    /// edit distance of the provided reference string.
     /// </summary>
-    /// <param name="s">The string against which others will be compared.</param>
-    /// <param name="maxEditDistance">The inclusive maximum edit distance for allowed strings.</param>
-    /// <param name="ignoreCase">When true then the automaton will ignore casing differences.</param>
-    /// <param name="metric">The metric.</param>
+    /// <param name="s">
+    /// The reference string that defines the center of the Levenshtein distance computation.
+    /// The resulting automaton will accept strings whose distance to this string is less than
+    /// or equal to <paramref name="maxEditDistance"/>.
+    /// </param>
+    /// <param name="maxEditDistance">
+    /// The inclusive maximum number of edit operations (insertions, deletions, or substitutions)
+    /// allowed between the reference string and a candidate string.
+    /// Must be non-negative.
+    /// </param>
+    /// <param name="ignoreCase">
+    /// When <c>true</c>, the automaton will perform case-insensitive matching using the
+    /// invariant culture.
+    /// </param>
+    /// <param name="metric">
+    /// The edit distance algorithm to use. The following are supported:
+    /// <list type="bullet">
+    ///   <item>
+    ///     <term><see cref="LevenshtypoMetric.Levenshtein"/></term>
+    ///     <description>Classic Levenshtein distance: insert, delete, substitute</description>
+    ///   </item>
+    ///   <item>
+    ///     <term><see cref="LevenshtypoMetric.RestrictedEdit"/></term>
+    ///     <description>Optimal String Alignment</description>
+    ///   </item>
+    /// </list>
+    /// </param>
+    /// <returns>
+    /// A thread-safe, immutable <see cref="Levenshtomaton"/> instance representing a DFA
+    /// capable of determining whether an input string is within the given edit distance
+    /// of <paramref name="s"/>.
+    /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="maxEditDistance"/> is negative.
+    /// </exception>
     public Levenshtomaton Construct(string s, int maxEditDistance, bool ignoreCase = false, LevenshtypoMetric metric = LevenshtypoMetric.Levenshtein)
     {
         if (maxEditDistance < 0)
         {
-            // The limitation is purely for practical purposes as the number of states can truly explode.
             throw new ArgumentOutOfRangeException(nameof(maxEditDistance));
         }
 

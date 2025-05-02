@@ -1,1 +1,8 @@
 ﻿#nullable enable
+Levenshtypo.Levenshtrie<T>.Add(System.ReadOnlySpan<char> key, T value) -> void
+Levenshtypo.Levenshtrie<T>.Remove(System.ReadOnlySpan<char> key) -> bool
+Levenshtypo.LevenshtrieMultiMap<T>.Add(System.ReadOnlySpan<char> key, T value) -> void
+Levenshtypo.LevenshtrieMultiMap<T>.GetValuesResult.Current.get -> T
+Levenshtypo.LevenshtrieMultiMap<T>.GetValuesResult.MoveNext() -> bool
+Levenshtypo.LevenshtrieMultiMap<T>.Remove(System.ReadOnlySpan<char> key, T value, System.Collections.Generic.IEqualityComparer<T>! comparer) -> bool
+Levenshtypo.LevenshtrieMultiMap<T>.RemoveAll(System.ReadOnlySpan<char> key) -> bool
