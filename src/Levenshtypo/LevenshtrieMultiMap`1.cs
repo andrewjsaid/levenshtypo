@@ -94,8 +94,7 @@ public sealed class LevenshtrieMultiMap<T> :
     /// </summary>
     /// <param name="key">The key to associate the value with.</param>
     /// <param name="value">The value to add.</param>
-    public void Add(string key, T value)
-        => _coreTrie.Set(key, value, overwrite: false);
+    public void Add(string key, T value) => Add(key.AsSpan(), value);
 
     /// <summary>
     /// Adds a new value under the specified key.
@@ -103,7 +102,41 @@ public sealed class LevenshtrieMultiMap<T> :
     /// <param name="key">The key to associate the value with.</param>
     /// <param name="value">The value to add.</param>
     public void Add(ReadOnlySpan<char> key, T value)
-        => _coreTrie.Set(key, value, overwrite: false);
+    {
+        ref var slot = ref _coreTrie.GetValueRefForMulti(
+            key,
+            comparer: null, 
+            compareValue: default!, 
+            exists: out _);
+        slot = value;
+    }
+
+    /// <summary>
+    /// Retrieves a mutable reference to a value associated with the specified key,
+    /// inserting the value if the key is not already present in the trie.
+    /// </summary>
+    /// <param name="key">The key to locate or insert in the trie.</param>
+    /// <param name="comparer">The equality comparer used to determine if an existing value matches <paramref name="value"/>.</param>
+    /// <param name="value">The value to insert if no existing value matches the given key and comparer.</param>
+    /// <param name="exists">
+    /// When this method returns, contains <c>true</c> if an existing matching value was found;
+    /// otherwise <c>false</c> if a new value was added.
+    /// </param>
+    /// <returns>
+    /// A reference to the existing or newly inserted value stored under the specified key.
+    /// This reference may be used to read or modify the value in place.
+    /// </returns>
+    public ref T GetOrAdd(ReadOnlySpan<char> key, T value, IEqualityComparer<T> comparer, out bool exists)
+    {
+        ref var result = ref _coreTrie.GetValueRefForMulti(key, value, comparer, out exists);
+        
+        if (!exists)
+        {
+            result = value;
+        }
+
+        return ref result!;
+    }
 
     /// <summary>
     /// Removes all values associated with the specified key.
@@ -112,7 +145,7 @@ public sealed class LevenshtrieMultiMap<T> :
     /// <returns><c>true</c> if any values were removed; otherwise, <c>false</c>.</returns>
     public bool RemoveAll(string key)
         => _coreTrie.Remove(key, all: true, default, EqualityComparer<T>.Default);
-    
+
     /// <summary>
     /// Removes all values associated with the specified key.
     /// </summary>

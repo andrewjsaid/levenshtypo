@@ -102,8 +102,7 @@ public sealed class Levenshtrie<T> :
     /// <param name="key">The key to associate with the value.</param>
     /// <param name="value">The value to store.</param>
     /// <exception cref="ArgumentException">Thrown if the key already exists in the trie.</exception>
-    public void Add(string key, T value)
-        => _coreTrie.Set(key, value, overwrite: false);
+    public void Add(string key, T value) => Add(key.AsSpan(), value);
 
     /// <summary>
     /// Adds a new key-value pair to the trie.
@@ -113,7 +112,10 @@ public sealed class Levenshtrie<T> :
     /// <exception cref="ArgumentException">Thrown if the key already exists in the trie.</exception>
 
     public void Add(ReadOnlySpan<char> key, T value)
-        => _coreTrie.Set(key, value, overwrite: false);
+    {
+        ref var slot = ref _coreTrie.GetValueRefForSingle(key, adding: true, out var _);
+        slot = value;
+    }
 
     /// <summary>
     /// Gets or sets the value associated with the specified key.
@@ -133,7 +135,8 @@ public sealed class Levenshtrie<T> :
         }
         set
         {
-            _coreTrie.Set(key, value, overwrite: true);
+            ref var slot = ref _coreTrie.GetValueRefForSingle(key, adding: false, out var _);
+            slot = value;
         }
     }
 

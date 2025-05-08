@@ -51,7 +51,11 @@ internal abstract class LevenshtrieCore<T>
 
         foreach (var (key, value) in source)
         {
-            trie.Set(key, value, overwrite: false);
+            ref var result = ref allowMulti
+                ? ref trie.GetValueRefForMulti(key, default!, null, out var _)
+                : ref trie.GetValueRefForSingle(key, true, out var _);
+
+            result = value;
         }
 
         return trie;
@@ -619,7 +623,106 @@ internal abstract class LevenshtrieCore<T>
         public void Reset() => throw new NotSupportedException();
     }
 
-    public void Set(ReadOnlySpan<char> key, T value, bool overwrite)
+    public ref T GetValueRefForSingle(ReadOnlySpan<char> key, bool adding, out bool hasValue)
+    {
+        Debug.Assert(!_allowMulti);
+
+        ref var entry = ref GetWriteEntryRef(key);
+
+        if (entry.ResultIndex is not NoIndex && adding)
+        {
+            throw new ArgumentException("May not use this data structure with duplicate keys.", nameof(key));
+        }
+
+        if (entry.ResultIndex is NoIndex)
+        {
+            // Write result to results array
+            var newResultIndex = TakeResultSlot();
+            hasValue = false;
+
+            _results[newResultIndex] = new Result
+            {
+                Value = default!,
+                NextResultIndex = NoIndex
+            };
+
+            entry.ResultIndex = newResultIndex;
+        }
+        else
+        {
+            hasValue = true;
+        }
+
+        return ref _results[entry.ResultIndex].Value;
+    }
+
+    public ref T GetValueRefForMulti(
+        ReadOnlySpan<char> key,
+        T compareValue,
+        IEqualityComparer<T>? comparer,
+        out bool exists)
+    {
+        Debug.Assert(_allowMulti);
+
+        ref var entry = ref GetWriteEntryRef(key);
+
+        if (entry.ResultIndex is NoIndex)
+        {
+            // Write result to results array
+            var newResultIndex = TakeResultSlot();
+            exists = false;
+
+            _results[newResultIndex] = new Result
+            {
+                Value = default!,
+                NextResultIndex = NoIndex
+            };
+
+            entry.ResultIndex = newResultIndex;
+
+            return ref _results[entry.ResultIndex].Value;
+        }
+        else
+        {
+            ref Result finalResultEntry = ref Unsafe.NullRef<Result>();
+
+            var finalResultEntryIndex = entry.ResultIndex;
+            var nextExistingResultIndex = finalResultEntryIndex;
+            while (nextExistingResultIndex is not NoIndex)
+            {
+                finalResultEntry = ref _results[nextExistingResultIndex];
+                finalResultEntryIndex = nextExistingResultIndex;
+
+                if (comparer is not null && comparer.Equals(compareValue, finalResultEntry.Value))
+                {
+                    exists = true;
+                    return ref finalResultEntry.Value;
+                }
+
+                nextExistingResultIndex = finalResultEntry.NextResultIndex;
+            }
+
+            Debug.Assert(!Unsafe.IsNullRef(ref finalResultEntry));
+
+            // Write result to results array
+            // ref finalResultEntry can't be used from here as we
+            // are possibly assigning a new value to _results
+            var newResultIndex = TakeResultSlot();
+            exists = false;
+
+            _results[newResultIndex] = new Result
+            {
+                Value = default!,
+                NextResultIndex = NoIndex
+            };
+
+            _results[finalResultEntryIndex].NextResultIndex = newResultIndex;
+
+            return ref _results[newResultIndex].Value;
+        }
+    }
+
+    private ref Entry GetWriteEntryRef(ReadOnlySpan<char> key)
     {
         EnsureEntriesHasEmptySlots(2);
 
@@ -680,15 +783,13 @@ internal abstract class LevenshtrieCore<T>
                         if (!isBranch)
                         {
                             // The new node is along this head / tail data
-                            Branch(ref childEntry, charsMatched, null, [], value);
+                            return ref GetNewBranchEntryRef(ref childEntry, charsMatched, null, []);
                         }
                         else
                         {
                             // The new node branches off at some point along this head / tail data
-                            Branch(ref childEntry, charsMatched, nextRune, key, value);
+                            return ref GetNewBranchEntryRef(ref childEntry, charsMatched, nextRune, key);
                         }
-
-                        return;
                     }
 
                     break;
@@ -699,77 +800,23 @@ internal abstract class LevenshtrieCore<T>
 
             if (!found)
             {
-                Branch(
+                return ref GetNewBranchEntryRef(
                     ref entry,
                     entry.EntryValue.Utf16SequenceLength + entry.TailDataLength,
                     nextRune,
-                    key,
-                    value);
-                return;
+                    key);
             }
         }
 
-        var existingResultIndex = entry.ResultIndex;
-        if (existingResultIndex is not NoIndex && overwrite)
-        {
-            _results[existingResultIndex] = new Result
-            {
-                Value = value,
-                NextResultIndex = NoIndex
-            };
-        }
-        else if (existingResultIndex is NoIndex || _allowMulti)
-        {
-            // Write result to results array
-            var resultIndex = TakeResultSlot();
-
-            if (existingResultIndex is not NoIndex && _allowMulti)
-            {
-                ref Result finalResultEntry = ref Unsafe.NullRef<Result>();
-
-                var nextExistingResultIndex = existingResultIndex;
-                while (nextExistingResultIndex is not NoIndex)
-                {
-                    finalResultEntry = ref _results[nextExistingResultIndex];
-                    nextExistingResultIndex = finalResultEntry.NextResultIndex;
-                }
-
-                finalResultEntry.NextResultIndex = resultIndex;
-            }
-            else
-            {
-                entry.ResultIndex = resultIndex;
-            }
-
-            _results[resultIndex] = new Result
-            {
-                Value = value,
-                NextResultIndex = NoIndex
-            };
-
-            _resultsSize++;
-        }
-        else
-        {
-            throw new ArgumentException("May not use this data structure with duplicate keys.", nameof(key));
-        }
+        return ref entry;
     }
 
-    private void Branch(
+    private ref Entry GetNewBranchEntryRef(
         ref Entry parentEntry,
         int splitParentEntryChars,
         Rune? newBranchRune,
-        ReadOnlySpan<char> newBranchTailData,
-        T value)
+        ReadOnlySpan<char> newBranchTailData)
     {
-        // Write result to results array
-        var resultIndex = TakeResultSlot();
-        _results[resultIndex] = new Result
-        {
-            Value = value,
-            NextResultIndex = NoIndex
-        };
-
         Debug.Assert(
             splitParentEntryChars >= parentEntry.EntryValue.Utf16SequenceLength
             && splitParentEntryChars <= parentEntry.EntryValue.Utf16SequenceLength + parentEntry.TailDataLength);
@@ -835,7 +882,7 @@ internal abstract class LevenshtrieCore<T>
                 EntryValue = newBranchRune.Value,
                 FirstChildEntryIndex = NoIndex,
                 NextSiblingEntryIndex = NoIndex,
-                ResultIndex = resultIndex,
+                ResultIndex = NoIndex,
                 TailDataIndex = tailDataIndex,
                 TailDataLength = newBranchTailData.Length
             };
@@ -854,12 +901,13 @@ internal abstract class LevenshtrieCore<T>
                 parentEntry.FirstChildEntryIndex = _entriesSize;
             }
 
-            _entriesSize++;
+            return ref _entries[_entriesSize++];
         }
         else
         {
             Debug.Assert(parentEntry.ResultIndex == NoIndex);
-            parentEntry.ResultIndex = resultIndex;
+            parentEntry.ResultIndex = NoIndex;
+            return ref parentEntry;
         }
     }
 
@@ -1020,7 +1068,6 @@ internal abstract class LevenshtrieCore<T>
             < 16 => 16,
             _ => currentSize * 2
         };
-
 
     [DebuggerDisplay("{EntryValue}")]
     internal struct Entry

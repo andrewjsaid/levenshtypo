@@ -2,6 +2,7 @@
 Levenshtypo.Levenshtrie<T>.Add(System.ReadOnlySpan<char> key, T value) -> void
 Levenshtypo.Levenshtrie<T>.Remove(System.ReadOnlySpan<char> key) -> bool
 Levenshtypo.LevenshtrieMultiMap<T>.Add(System.ReadOnlySpan<char> key, T value) -> void
+Levenshtypo.LevenshtrieMultiMap<T>.GetOrAdd(System.ReadOnlySpan<char> key, T value, System.Collections.Generic.IEqualityComparer<T>! comparer, out bool exists) -> T
 Levenshtypo.LevenshtrieMultiMap<T>.GetValuesResult.Current.get -> T
 Levenshtypo.LevenshtrieMultiMap<T>.GetValuesResult.MoveNext() -> bool
 Levenshtypo.LevenshtrieMultiMap<T>.Remove(System.ReadOnlySpan<char> key, T value, System.Collections.Generic.IEqualityComparer<T>! comparer) -> bool

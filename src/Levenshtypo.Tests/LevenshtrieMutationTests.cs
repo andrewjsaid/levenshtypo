@@ -119,8 +119,18 @@ public class LevenshtrieMutationTests
 
                 trie.GetValues(key).ToArray().ShouldBe([key + "_1"], comparer: StringComparer.Ordinal);
 
-                trie.Add(key, key + "_2");
-                trie.Add(key, key + "_3");
+                ref var two = ref trie.GetOrAdd(key, key + "_2", StringComparer.Ordinal, out var twoExists);
+                twoExists.ShouldBeFalse();
+                two.ShouldBe(key + "_2");
+
+                var three1 = key + "_3";
+                trie.Add(key, three1);
+
+                var three2 = string.Create(three1.Length, three1, static (span, s) => s.CopyTo(span));
+                object.ReferenceEquals(three1, three2).ShouldBeFalse();
+                ref var three = ref trie.GetOrAdd(key, three2, StringComparer.Ordinal, out var threeExists);
+                threeExists.ShouldBeTrue();
+                object.ReferenceEquals(three1, three).ShouldBeTrue();
 
                 trie.GetValues(key).ToArray().ShouldBe([key + "_1", key + "_2", key + "_3"], comparer: StringComparer.Ordinal);
             }
