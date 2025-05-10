@@ -22,9 +22,7 @@ namespace Levenshtypo;
 public sealed class LevenshtrieMultiMap<T> :
     ILevenshtrie<T>,
     ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>,
-    ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>>,
-    ILevenshtomatonExecutor<SearchByPrefixWrapper<T[]>>,
-    ILevenshtomatonExecutor<SearchByPrefixWrapper<IEnumerable<T>>>
+    ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>>
 {
     private readonly LevenshtrieCore<T> _coreTrie;
 
@@ -69,25 +67,11 @@ public sealed class LevenshtrieMultiMap<T> :
     LevenshtrieSearchResult<T>[] ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>.ExecuteAutomaton<TSearchState>(TSearchState executionState) => Search(executionState);
 
     /// <inheritdoc />
-    public T[] SearchByPrefix<TSearchState>(TSearchState searcher)
-        where TSearchState : ILevenshtomatonExecutionState<TSearchState>
-        => _coreTrie.SearchByPrefix(searcher);
-
-    SearchByPrefixWrapper<T[]> ILevenshtomatonExecutor<SearchByPrefixWrapper<T[]>>.ExecuteAutomaton<TSearchState>(TSearchState executionState) => new(SearchByPrefix(executionState));
-
-    /// <inheritdoc />
     public IEnumerable<LevenshtrieSearchResult<T>> EnumerateSearch<TSearchState>(TSearchState searcher)
         where TSearchState : ILevenshtomatonExecutionState<TSearchState>
         => _coreTrie.EnumerateSearch(searcher);
 
     IEnumerable<LevenshtrieSearchResult<T>> ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>>.ExecuteAutomaton<TState>(TState executionState) => EnumerateSearch(executionState);
-
-    /// <inheritdoc />
-    public IEnumerable<T> EnumerateSearchByPrefix<TSearchState>(TSearchState searcher)
-        where TSearchState : ILevenshtomatonExecutionState<TSearchState>
-        => _coreTrie.EnumerateSearchByPrefix(searcher);
-
-    SearchByPrefixWrapper<IEnumerable<T>> ILevenshtomatonExecutor<SearchByPrefixWrapper<IEnumerable<T>>>.ExecuteAutomaton<TState>(TState executionState) => new(EnumerateSearchByPrefix(executionState));
 
     /// <summary>
     /// Adds a new value under the specified key.

@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using Shouldly;
+﻿using Shouldly;
 
 namespace Levenshtypo.Tests;
 
@@ -112,6 +111,7 @@ public class LevenshtrieSearchTests
             .ShouldBe(["1", "2", "3", "5", "6", "7"], ignoreOrder: true, comparer: StringComparer.OrdinalIgnoreCase);
 
         t.SearchByPrefix("00", maxEditDistance: 0)
+            .Select(r => r.Result)
             .ToArray()
             .ShouldBe(["1", "2", "3", "4", "5", "6", "7"], ignoreOrder: true, comparer: StringComparer.OrdinalIgnoreCase);
 
@@ -127,24 +127,9 @@ public class LevenshtrieSearchTests
         var expectedResults = expected.Select(e => new LevenshtrieSearchResult<string>(e.distance, e.word));
 
         t.Search(query, distance)
-            .ShouldBe(expectedResults, ignoreOrder: true, comparer: new LevenshtrieSearchResultComparer<string>());
+            .ShouldBe(expectedResults, ignoreOrder: true, comparer: new LevenshtrieSearchResultEqualityComparer<string>());
 
         t.EnumerateSearch(query, distance)
-            .ShouldBe(expectedResults, ignoreOrder: true, comparer: new LevenshtrieSearchResultComparer<string>());
-    }
-
-    private class LevenshtrieSearchResultComparer<T> : IEqualityComparer<LevenshtrieSearchResult<T>>
-    {
-        public bool Equals(LevenshtrieSearchResult<T> x, LevenshtrieSearchResult<T> y)
-            => x.Distance == y.Distance
-            && (x.Result?.Equals(y.Result) ?? (y.Result is null));
-
-        public int GetHashCode([DisallowNull] LevenshtrieSearchResult<T> obj)
-        {
-            var hashCode = new HashCode();
-            hashCode.Add(obj.Distance);
-            hashCode.Add(obj.Result);
-            return hashCode.ToHashCode();
-        }
+            .ShouldBe(expectedResults, ignoreOrder: true, comparer: new LevenshtrieSearchResultEqualityComparer<string>());
     }
 }

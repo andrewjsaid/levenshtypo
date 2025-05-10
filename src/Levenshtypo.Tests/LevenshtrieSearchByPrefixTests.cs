@@ -114,14 +114,51 @@ public class LevenshtrieSearchByPrefixTests
         Test(levenshtrie, "a", 0, entries);
     }
 
-    private static void Test(Levenshtrie<string> t, string query, int distance, IEnumerable<string> expectedResults)
+    private static void Test(Levenshtrie<string> t, string query, int distance, IEnumerable<string> expected)
     {
+        var list = expected.ToList();
+        if (list.Count > 10_000)
+        {
+            // Test will be too slow for Shouldly to compare with ignoreCase.
+            // N.B. to be clear: Levenshtypo can easily handle such numbers
+            return;
+        }
+
+        var expectedResults = list.Select(e => new LevenshtrieSearchResult<string>(CalculatePrefixDistance(query, e), e));
+
         t.SearchByPrefix(query, distance)
-            .OrderBy(x => x)
-            .ShouldBe(expectedResults.OrderBy(x => x));
+            .ShouldBe(expectedResults, ignoreOrder: true, comparer: new LevenshtrieSearchResultEqualityComparer<string>());
 
         t.EnumerateSearchByPrefix(query, distance)
-            .OrderBy(x => x)
-            .ShouldBe(expectedResults.OrderBy(x => x));
+            .ShouldBe(expectedResults, ignoreOrder: true, comparer: new LevenshtrieSearchResultEqualityComparer<string>());
+    }
+
+    private static int CalculatePrefixDistance(string query, string result)
+    {
+        int minDistance = int.MaxValue;
+
+        var automaton = LevenshtomatonFactory.Instance.Construct(query, maxEditDistance: 5);
+
+        var state = automaton.Start();
+
+        if (state.IsFinal && state.Distance < minDistance)
+        {
+            minDistance = state.Distance;
+        }
+
+        foreach (var r in result.EnumerateRunes())
+        {
+            if (!state.MoveNext(r, out state))
+            {
+                break;
+            }
+
+            if (state.IsFinal && state.Distance < minDistance)
+            {
+                minDistance = state.Distance;
+            }
+        }
+
+        return minDistance;
     }
 }
