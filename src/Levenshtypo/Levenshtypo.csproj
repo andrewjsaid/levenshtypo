@@ -33,7 +33,7 @@ Blazing fast. Alloc-friendly. Plug-and-play.
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageIcon>logo.png</PackageIcon>
     <Company>Andrew J Said</Company>
-    <Version>1.6.0</Version>
+    <Version>1.7.0</Version>
     <Product>Levenshtypo</Product>
   </PropertyGroup>
 
