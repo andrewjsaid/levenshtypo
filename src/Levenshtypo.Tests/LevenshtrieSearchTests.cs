@@ -93,9 +93,9 @@ public class LevenshtrieSearchTests
     }
 
     [Fact]
-    public void MultiMap()
+    public void Set()
     {
-        var t = Levenshtrie.CreateEmptyMulti<string>(ignoreCase: false);
+        var t = Levenshtrie.CreateEmptySet<string>(ignoreCase: false);
 
         t.Add("00001", "1");
         t.Add("00001", "2");

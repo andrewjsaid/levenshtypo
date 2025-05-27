@@ -10,7 +10,7 @@ namespace Levenshtypo;
 ///
 /// <para>
 /// This trie allows a single value to be associated with each unique key. To associate
-/// multiple values with the same key, use <see cref="LevenshtrieMultiMap{T}"/>.
+/// multiple values with the same key, use <see cref="LevenshtrieSet{T}"/>.
 /// </para>
 ///
 /// <para>
@@ -28,9 +28,9 @@ public sealed class Levenshtrie<T> :
     ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>,
     ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>>
 {
-    private readonly LevenshtrieCore<T> _coreTrie;
+    private readonly ILevenshtrieCoreSingle<T> _coreTrie;
 
-    private Levenshtrie(LevenshtrieCore<T> coreTrie)
+    private Levenshtrie(ILevenshtrieCoreSingle<T> coreTrie)
     {
         _coreTrie = coreTrie;
     }
@@ -40,37 +40,38 @@ public sealed class Levenshtrie<T> :
     /// <summary>
     /// Creates a <see cref="Levenshtrie{T}"/> from the specified key-value pairs.
     /// </summary>
-    /// <param name="source">The sequence of string-value pairs to populate the trie with.</param>
+    /// <param name="source">A sequence of key-value pairs to populate the trie.</param>
     /// <param name="ignoreCase">
-    /// When <c>true</c>, the trie will perform case-insensitive comparisons using invariant culture.
+    /// When <c>true</c>, keys will be matched case-insensitively using invariant culture rules.
     /// </param>
-    /// <returns>A new <see cref="Levenshtrie{T}"/> instance.</returns>
+    /// <returns>A new instance of <see cref="Levenshtrie{T}"/>.</returns>
+    /// <exception cref="ArgumentException">Thrown if duplicate keys exist in the input.</exception>
     public static Levenshtrie<T> Create(IEnumerable<KeyValuePair<string, T>> source, bool ignoreCase = false)
     {
-        var coreTrie = LevenshtrieCore<T>.Create(source, ignoreCase, allowMulti: false);
+        var coreTrie = ignoreCase
+            ? LevenshtrieCoreSingle<T, CaseInsensitive>.Create(source)
+            : LevenshtrieCoreSingle<T, CaseSensitive>.Create(source);
+
         return new Levenshtrie<T>(coreTrie);
     }
 
     /// <summary>
-    /// Attempts to retrieve the value associated with the specified key.
+    /// Attempts to retrieve the value associated with the given key.
     /// </summary>
-    /// <param name="key">The key to search for.</param>
+    /// <param name="key">The key to look up.</param>
     /// <param name="value">
-    /// When this method returns <c>true</c>, contains the value associated with the specified key.
-    /// When it returns <c>false</c>, the value is set to its default.
+    /// When this method returns <c>true</c>, contains the value associated with the key;
+    /// otherwise, contains the default value of type <typeparamref name="T"/>.
     /// </param>
     /// <returns><c>true</c> if the key was found; otherwise, <c>false</c>.</returns>
-    public bool TryGetValue(string key, [MaybeNullWhen(false)] out T value)
-    {
-        var cursor = _coreTrie.GetValues(key);
-        return cursor.MoveNext(out value);
-    }
+    public bool TryGetValue(ReadOnlySpan<char> key, [MaybeNullWhen(false)] out T value) => _coreTrie.TryGetValue(key, out value);
 
     /// <inheritdoc />
     public LevenshtrieSearchResult<T>[] Search<TSearchState>(TSearchState searcher)
         where TSearchState : ILevenshtomatonExecutionState<TSearchState>
         => _coreTrie.Search(searcher);
 
+    /// <inheritdoc />
     LevenshtrieSearchResult<T>[] ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>.ExecuteAutomaton<TSearchState>(TSearchState executionState) => Search(executionState);
 
     /// <inheritdoc />
@@ -78,15 +79,15 @@ public sealed class Levenshtrie<T> :
         where TSearchState : ILevenshtomatonExecutionState<TSearchState>
         => _coreTrie.EnumerateSearch(searcher);
 
+    /// <inheritdoc />
     IEnumerable<LevenshtrieSearchResult<T>> ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>>.ExecuteAutomaton<TState>(TState executionState) => EnumerateSearch(executionState);
 
     /// <summary>
-    /// Adds a new key-value pair to the trie.
+    /// Determines whether the trie contains the specified key.
     /// </summary>
-    /// <param name="key">The key to associate with the value.</param>
-    /// <param name="value">The value to store.</param>
-    /// <exception cref="ArgumentException">Thrown if the key already exists in the trie.</exception>
-    public void Add(string key, T value) => Add(key.AsSpan(), value);
+    /// <param name="key">The key to check for existence.</param>
+    /// <returns><c>true</c> if the key exists; otherwise, <c>false</c>.</returns>
+    public bool ContainsKey(ReadOnlySpan<char> key) => _coreTrie.ContainsKey(key);
 
     /// <summary>
     /// Adds a new key-value pair to the trie.
@@ -95,22 +96,37 @@ public sealed class Levenshtrie<T> :
     /// <param name="value">The value to store.</param>
     /// <exception cref="ArgumentException">Thrown if the key already exists in the trie.</exception>
 
-    public void Add(ReadOnlySpan<char> key, T value)
-    {
-        ref var slot = ref _coreTrie.GetValueRefForSingle(key, adding: true, out var _);
-        slot = value;
-    }
+    public void Add(ReadOnlySpan<char> key, T value) => _coreTrie.Add(key, value);
 
+    /// <summary>
+    /// Retrieves a reference to the value associated with the specified key,
+    /// or creates and returns a reference to a new entry if the key does not exist.
+    /// </summary>
+    /// <param name="key">The key to find or insert.</param>
+    /// <param name="exists">
+    /// Set to <c>true</c> if the key already exists in the trie; otherwise, <c>false</c>.
+    /// </param>
+    /// <returns>
+    /// A reference to the value associated with the key. If the key did not exist,
+    /// this is a reference to a new uninitialized entry, which must be set by the caller.
+    /// </returns>
+    public ref T GetOrAddRef(ReadOnlySpan<char> key, out bool exists) => ref _coreTrie.GetOrAddRef(key, out exists);
+ 
     /// <summary>
     /// Gets or sets the value associated with the specified key.
     /// </summary>
-    /// <param name="key">The key whose value to get or set.</param>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when the key does not exist on get.</exception>
-    public T this[string key]
+    /// <param name="key">The key to retrieve or assign a value for.</param>
+    /// <returns>The value associated with the key.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown if the key does not exist when reading.</exception>
+    /// <remarks>
+    /// Setting a value will insert a new entry if the key is not already present.
+    /// </remarks>
+
+    public T this[ReadOnlySpan<char> key]
     {
         get
         {
-            if (TryGetValue(key, out var result))
+            if (_coreTrie.TryGetValue(key, out var result))
             {
                 return result;
             }
@@ -119,25 +135,18 @@ public sealed class Levenshtrie<T> :
         }
         set
         {
-            ref var slot = ref _coreTrie.GetValueRefForSingle(key, adding: false, out var _);
-            slot = value;
+            ref var result = ref _coreTrie.GetOrAddRef(key, out _);
+            result = value;
         }
     }
 
     /// <summary>
-    /// Removes the entry with the specified key from the trie.
+    /// Removes the entry associated with the specified key.
     /// </summary>
-    /// <param name="key">The key to remove.</param>
-    /// <returns><c>true</c> if the key was found and removed; otherwise, <c>false</c>.</returns>
-    public bool Remove(string key)
-        => _coreTrie.Remove(key, all: true, default, EqualityComparer<T>.Default);
-
-    /// <summary>
-    /// Removes the entry with the specified key from the trie.
-    /// </summary>
-    /// <param name="key">The key to remove.</param>
-    /// <returns><c>true</c> if the key was found and removed; otherwise, <c>false</c>.</returns>
-    public bool Remove(ReadOnlySpan<char> key)
-        => _coreTrie.Remove(key, all: true, default, EqualityComparer<T>.Default);
+    /// <param name="key">The key of the entry to remove.</param>
+    /// <returns>
+    /// <c>true</c> if the key was found and the entry was removed; otherwise, <c>false</c>.
+    /// </returns>
+    public bool Remove(ReadOnlySpan<char> key)=> _coreTrie.Remove(key);
 
 }

@@ -33,21 +33,21 @@ public class LevenshtrieMutationTests
     }
 
     [Fact]
-    public void GeneratedTests_Guids_MultiMap()
+    public void GeneratedTests_Guids_Set()
     {
-        RunMultiMapTest(Enumerable.Range(0, 100_000).Select(_ => Guid.NewGuid().ToString()));
+        RunSetTest(Enumerable.Range(0, 100_000).Select(_ => Guid.NewGuid().ToString()));
     }
 
     [Fact]
-    public void GeneratedTests_Integers_MultiMap()
+    public void GeneratedTests_Integers_Set()
     {
-        RunMultiMapTest(Enumerable.Range(0, 100_000).Select(i => i.ToString()));
+        RunSetTest(Enumerable.Range(0, 100_000).Select(i => i.ToString()));
     }
 
     [Fact]
-    public void HandWrittenTests_MultiMap()
+    public void HandWrittenTests_Set()
     {
-        RunMultiMapTest([
+        RunSetTest([
             "a",
             "abcde", // extend head
             "abcdefghi", // extend tail data
@@ -99,9 +99,9 @@ public class LevenshtrieMutationTests
     }
 
 
-    private void RunMultiMapTest(IEnumerable<string> keys)
+    private void RunSetTest(IEnumerable<string> keys)
     {
-        var trie = Levenshtrie.CreateEmptyMulti<string>();
+        var trie = Levenshtrie.CreateEmptySet<string>(resultComparer: StringComparer.Ordinal);
 
         var addedKeys = new List<string>();
 
@@ -115,20 +115,20 @@ public class LevenshtrieMutationTests
 
                 trie.GetValues(key).ToArray().ShouldBeEmpty();
 
-                trie.Add(key, key + "_1");
+                trie.Add(key, key + "_1").ShouldBeTrue();
 
                 trie.GetValues(key).ToArray().ShouldBe([key + "_1"], comparer: StringComparer.Ordinal);
 
-                ref var two = ref trie.GetOrAdd(key, key + "_2", StringComparer.Ordinal, out var twoExists);
+                ref var two = ref trie.GetOrAddRef(key, key + "_2", out var twoExists);
                 twoExists.ShouldBeFalse();
                 two.ShouldBe(key + "_2");
 
                 var three1 = key + "_3";
-                trie.Add(key, three1);
+                trie.Add(key, three1).ShouldBeTrue();
 
                 var three2 = string.Create(three1.Length, three1, static (span, s) => s.CopyTo(span));
                 object.ReferenceEquals(three1, three2).ShouldBeFalse();
-                ref var three = ref trie.GetOrAdd(key, three2, StringComparer.Ordinal, out var threeExists);
+                ref var three = ref trie.GetOrAddRef(key, three2, out var threeExists);
                 threeExists.ShouldBeTrue();
                 object.ReferenceEquals(three1, three).ShouldBeTrue();
 
@@ -142,7 +142,7 @@ public class LevenshtrieMutationTests
 
             foreach (var key in addedKeys)
             {
-                var removed = trie.Remove(key, key + "_2", StringComparer.Ordinal);
+                var removed = trie.Remove(key, key + "_2");
                 removed.ShouldBeTrue();
 
                 trie.GetValues(key).ToArray().ShouldBe([key + "_1", key + "_3"], comparer: StringComparer.Ordinal);

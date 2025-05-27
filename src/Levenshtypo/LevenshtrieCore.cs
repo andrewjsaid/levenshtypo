@@ -7,67 +7,54 @@ using System.Text;
 
 namespace Levenshtypo;
 
-internal abstract class LevenshtrieCore<T>
+/// <summary>
+/// Represents the core logic for a high-performance trie that supports approximate string matching,
+/// case sensitivity, and flexible result storage.
+///
+/// <para>
+/// This abstract base class handles the core character traversal and storage mechanics of a trie
+/// using <see cref="ReadOnlySpan{char}"/> as input keys. It maps normalized strings to an internal
+/// <c>int resultIndex</c>, which acts as an opaque reference to the associated data.
+/// </para>
+///
+/// <para>
+/// Derived types are responsible for interpreting and managing the actual result storage using this
+/// index — whether that means storing a single result, a collection, or using specialized memory layouts.
+/// </para>
+/// </summary>
+/// <typeparam name="T">
+/// The type of result values stored in the trie.
+/// </typeparam>
+/// <typeparam name="TCaseSensitivity">
+/// A struct implementing <see cref="ICaseSensitivity{T}"/> that defines case sensitivity rules
+/// used during character comparison.
+/// </typeparam>
+/// <typeparam name="TCursor">
+/// A cursor type implementing <see cref="ILevenshtrieCursor{T}"/> that allows traversal over
+/// stored results in the trie. Enables efficient enumeration and projection of results.
+/// </typeparam>
+
+internal abstract class LevenshtrieCore<T, TCaseSensitivity, TCursor>
+    where TCaseSensitivity : struct, ICaseSensitivity<TCaseSensitivity>
+    where TCursor : struct, ILevenshtrieCursor<T>
 {
-    private const int NoIndex = -1;
+    protected const int NoIndex = -1;
 
-    private Entry[] _entries;
+    private LevenshtrieCoreEntry[] _entries;
     private int _entriesSize;
-
-    private Result[] _results = [];
-    private int _resultsSize;
-    private readonly bool _allowMulti;
-    private int _freeResultHeadIndex = NoIndex;
-    private int _freeResultCount;
 
     private char[] _tailData = [];
     private int _tailDataSize;
 
-    private protected LevenshtrieCore(Entry root, bool allowMulti)
+    private protected LevenshtrieCore(LevenshtrieCoreEntry root)
     {
         _entries = [root];
         _entriesSize = 1;
-        _allowMulti = allowMulti;
     }
 
-    internal static LevenshtrieCore<T> Create(
-        IEnumerable<KeyValuePair<string, T>> source,
-        bool ignoreCase,
-        bool allowMulti)
-    {
-        var root = new Entry
-        {
-            EntryValue = Rune.ReplacementChar,
-            ResultIndex = NoIndex,
-            FirstChildEntryIndex = NoIndex,
-            TailDataIndex = NoIndex,
-            NextSiblingEntryIndex = NoIndex,
-            TailDataLength = 0
-        };
+    protected abstract TCursor CreateCursor(int resultIndex);
 
-        LevenshtrieCore<T> trie = ignoreCase
-            ? new CaseInsensitiveLevenshtrieCore<T>(root, allowMulti)
-            : new CaseSensitiveLevenshtrieCore<T>(root, allowMulti);
-
-        foreach (var (key, value) in source)
-        {
-            ref var result = ref allowMulti
-                ? ref trie.GetValueRefForMulti(key, default!, null, out var _)
-                : ref trie.GetValueRefForSingle(key, true, out var _);
-
-            result = value;
-        }
-
-        return trie;
-    }
-
-    public abstract bool IgnoreCase { get; }
-
-    private protected abstract bool AreEqual(Rune a, Rune b);
-
-    private protected abstract bool AreEqual(char a, char b);
-
-    private bool SearchNode<TSearchState>(in Entry entry, TSearchState searchState, out TSearchState nextSearchState)
+    private bool SearchNode<TSearchState>(in LevenshtrieCoreEntry entry, TSearchState searchState, out TSearchState nextSearchState)
         where TSearchState : ILevenshtomatonExecutionState<TSearchState>
     {
         if (!searchState.MoveNext(entry.EntryValue, out nextSearchState))
@@ -92,17 +79,16 @@ internal abstract class LevenshtrieCore<T>
         return true;
     }
 
-    public Cursor GetValues(string key)
+    protected ref LevenshtrieCoreEntry GetEntryRef(ReadOnlySpan<char> key)
     {
         var entries = _entries;
 
-        ref readonly var entry = ref _entries[0];
-        var keySpan = key.AsSpan();
+        ref var entry = ref _entries[0];
 
-        while (keySpan.Length > 0)
+        while (key.Length > 0)
         {
-            Rune.DecodeFromUtf16(keySpan, out var nextRune, out var charsConsumed);
-            keySpan = keySpan[charsConsumed..];
+            Rune.DecodeFromUtf16(key, out var nextRune, out var charsConsumed);
+            key = key[charsConsumed..];
 
             var found = false;
             var nextChildEntryIndex = entry.FirstChildEntryIndex;
@@ -110,7 +96,7 @@ internal abstract class LevenshtrieCore<T>
             {
                 entry = ref _entries[nextChildEntryIndex];
 
-                if (AreEqual(entry.EntryValue, nextRune))
+                if (default(TCaseSensitivity).Equals(entry.EntryValue, nextRune))
                 {
                     found = true;
 
@@ -118,25 +104,24 @@ internal abstract class LevenshtrieCore<T>
                     if (entryTailDataLength > 0)
                     {
                         var tailData = _tailData.AsSpan(entry.TailDataIndex, entry.TailDataLength);
-                        while (tailData.Length > 0 && keySpan.Length > 0)
+                        while (tailData.Length > 0 && key.Length > 0)
                         {
-                            Rune.DecodeFromUtf16(keySpan, out nextRune, out charsConsumed);
-                            keySpan = keySpan[charsConsumed..];
+                            Rune.DecodeFromUtf16(key, out nextRune, out charsConsumed);
+                            key = key[charsConsumed..];
 
                             Rune.DecodeFromUtf16(tailData, out var tailRune, out charsConsumed);
                             tailData = tailData[charsConsumed..];
 
-                            if (!AreEqual(nextRune, tailRune))
+                            if (!default(TCaseSensitivity).Equals(nextRune, tailRune))
                             {
-                                found = false;
-                                break;
+                                return ref Unsafe.NullRef<LevenshtrieCoreEntry>();
                             }
                         }
 
                         if (tailData.Length > 0)
                         {
                             // We've consumed the key without consuming the tail data
-                            found = false;
+                            return ref Unsafe.NullRef<LevenshtrieCoreEntry>();
                         }
                     }
 
@@ -148,18 +133,16 @@ internal abstract class LevenshtrieCore<T>
 
             if (!found)
             {
-                goto NotFound;
+                return ref Unsafe.NullRef<LevenshtrieCoreEntry>();
             }
         }
 
-        if (entry.ResultIndex is not NoIndex)
+        if (entry.ResultIndex is NoIndex)
         {
-            return new Cursor(_results, entry.ResultIndex);
+            return ref Unsafe.NullRef<LevenshtrieCoreEntry>();
         }
 
-    NotFound:
-
-        return new Cursor(_results, NoIndex);
+        return ref entry;
     }
 
     public LevenshtrieSearchResult<T>[] Search<TSearchState>(TSearchState searcher)
@@ -198,7 +181,7 @@ internal abstract class LevenshtrieCore<T>
 
             if (searchState.IsFinal && entry.ResultIndex is not NoIndex)
             {
-                var cursor = new Cursor(_results, entry.ResultIndex);
+                var cursor = CreateCursor(entry.ResultIndex);
                 while (cursor.MoveNext(out var result))
                 {
                     results.Add(new LevenshtrieSearchResult<T>(searchState.Distance, result));
@@ -227,10 +210,10 @@ internal abstract class LevenshtrieCore<T>
     private class SearchEnumerable<TSearchState> : IEnumerable<LevenshtrieSearchResult<T>>
         where TSearchState : ILevenshtomatonExecutionState<TSearchState>
     {
-        private readonly LevenshtrieCore<T> _trie;
+        private readonly LevenshtrieCore<T, TCaseSensitivity, TCursor> _trie;
         private readonly TSearchState _initialState;
 
-        public SearchEnumerable(LevenshtrieCore<T> trie, TSearchState initialState)
+        public SearchEnumerable(LevenshtrieCore<T, TCaseSensitivity, TCursor> trie, TSearchState initialState)
         {
             _trie = trie;
             _initialState = initialState;
@@ -244,16 +227,16 @@ internal abstract class LevenshtrieCore<T>
     private class SearchEnumerator<TSearchState> : IEnumerator<LevenshtrieSearchResult<T>>
         where TSearchState : ILevenshtomatonExecutionState<TSearchState>
     {
-        private readonly LevenshtrieCore<T> _trie;
+        private readonly LevenshtrieCore<T, TCaseSensitivity, TCursor> _trie;
         private readonly Stack<(int entryIndex, TSearchState searchState)> _state = new();
         private int _cursorDistance;
-        private Cursor _cursor;
+        private TCursor _cursor;
 
-        public SearchEnumerator(LevenshtrieCore<T> trie, TSearchState initialState)
+        public SearchEnumerator(LevenshtrieCore<T, TCaseSensitivity, TCursor> trie, TSearchState initialState)
         {
             _trie = trie;
             _state.Push((entryIndex: 0, searchState: initialState));
-            _cursor = new Cursor(trie._results, NoIndex);
+            _cursor = trie.CreateCursor(NoIndex);
         }
 
         public LevenshtrieSearchResult<T> Current { get; private set; }
@@ -299,7 +282,7 @@ internal abstract class LevenshtrieCore<T>
                 if (searchState.IsFinal && entry.ResultIndex is not NoIndex)
                 {
                     _cursorDistance = searchState.Distance;
-                    _cursor.ResetTo(entry.ResultIndex);
+                    _cursor = _trie.CreateCursor(entry.ResultIndex);
                     goto restart;
                 }
             }
@@ -311,106 +294,7 @@ internal abstract class LevenshtrieCore<T>
         public void Reset() => throw new NotSupportedException();
     }
 
-    public ref T GetValueRefForSingle(ReadOnlySpan<char> key, bool adding, out bool hasValue)
-    {
-        Debug.Assert(!_allowMulti);
-
-        ref var entry = ref GetWriteEntryRef(key);
-
-        if (entry.ResultIndex is not NoIndex && adding)
-        {
-            throw new ArgumentException("May not use this data structure with duplicate keys.", nameof(key));
-        }
-
-        if (entry.ResultIndex is NoIndex)
-        {
-            // Write result to results array
-            var newResultIndex = TakeResultSlot();
-            hasValue = false;
-
-            _results[newResultIndex] = new Result
-            {
-                Value = default!,
-                NextResultIndex = NoIndex
-            };
-
-            entry.ResultIndex = newResultIndex;
-        }
-        else
-        {
-            hasValue = true;
-        }
-
-        return ref _results[entry.ResultIndex].Value;
-    }
-
-    public ref T GetValueRefForMulti(
-        ReadOnlySpan<char> key,
-        T compareValue,
-        IEqualityComparer<T>? comparer,
-        out bool exists)
-    {
-        Debug.Assert(_allowMulti);
-
-        ref var entry = ref GetWriteEntryRef(key);
-
-        if (entry.ResultIndex is NoIndex)
-        {
-            // Write result to results array
-            var newResultIndex = TakeResultSlot();
-            exists = false;
-
-            _results[newResultIndex] = new Result
-            {
-                Value = default!,
-                NextResultIndex = NoIndex
-            };
-
-            entry.ResultIndex = newResultIndex;
-
-            return ref _results[entry.ResultIndex].Value;
-        }
-        else
-        {
-            ref Result finalResultEntry = ref Unsafe.NullRef<Result>();
-
-            var finalResultEntryIndex = entry.ResultIndex;
-            var nextExistingResultIndex = finalResultEntryIndex;
-            while (nextExistingResultIndex is not NoIndex)
-            {
-                finalResultEntry = ref _results[nextExistingResultIndex];
-                finalResultEntryIndex = nextExistingResultIndex;
-
-                if (comparer is not null && comparer.Equals(compareValue, finalResultEntry.Value))
-                {
-                    exists = true;
-                    return ref finalResultEntry.Value;
-                }
-
-                nextExistingResultIndex = finalResultEntry.NextResultIndex;
-            }
-
-            Debug.Assert(!Unsafe.IsNullRef(ref finalResultEntry));
-
-            // Write result to results array
-            // ref finalResultEntry can't be used from here as we
-            // are possibly assigning a new value to _results
-            var newResultIndex = TakeResultSlot();
-            exists = false;
-
-            _results[newResultIndex] = new Result
-            {
-                Value = default!,
-                NextResultIndex = NoIndex
-            };
-
-            _results[finalResultEntryIndex].NextResultIndex = newResultIndex;
-
-            return ref _results[newResultIndex].Value;
-        }
-    }
-
-    private ref Entry GetWriteEntryRef(ReadOnlySpan<char> key)
+    protected ref LevenshtrieCoreEntry GetOrAddEntryRef(ReadOnlySpan<char> key)
     {
         EnsureEntriesHasEmptySlots(2);
 
@@ -429,7 +313,7 @@ internal abstract class LevenshtrieCore<T>
             {
                 ref var childEntry = ref _entries[nextChildEntryIndex];
 
-                if (AreEqual(childEntry.EntryValue, nextRune))
+                if (default(TCaseSensitivity).Equals(childEntry.EntryValue, nextRune))
                 {
                     entry = ref childEntry;
                     found = true;
@@ -449,7 +333,7 @@ internal abstract class LevenshtrieCore<T>
                             Rune.DecodeFromUtf16(tailData, out var tailRune, out charsConsumed);
                             tailData = tailData[charsConsumed..];
 
-                            if (!AreEqual(nextRune, tailRune))
+                            if (!default(TCaseSensitivity).Equals(nextRune, tailRune))
                             {
                                 found = false;
                                 break;
@@ -499,8 +383,8 @@ internal abstract class LevenshtrieCore<T>
         return ref entry;
     }
 
-    private ref Entry GetNewBranchEntryRef(
-        ref Entry parentEntry,
+    private ref LevenshtrieCoreEntry GetNewBranchEntryRef(
+        ref LevenshtrieCoreEntry parentEntry,
         int splitParentEntryChars,
         Rune? newBranchRune,
         ReadOnlySpan<char> newBranchTailData)
@@ -518,7 +402,7 @@ internal abstract class LevenshtrieCore<T>
             Rune.DecodeFromUtf16(parentTailData, out var tailDataHeadRune, out var tailDataHeadConsumed);
 
             // Tail data should be moved to its own node
-            _entries[_entriesSize] = new Entry
+            _entries[_entriesSize] = new LevenshtrieCoreEntry
             {
                 EntryValue = tailDataHeadRune,
                 FirstChildEntryIndex = parentEntry.FirstChildEntryIndex,
@@ -565,7 +449,7 @@ internal abstract class LevenshtrieCore<T>
                 _tailDataSize += newBranchTailData.Length;
             }
 
-            _entries[_entriesSize] = new Entry
+            _entries[_entriesSize] = new LevenshtrieCoreEntry
             {
                 EntryValue = newBranchRune.Value,
                 FirstChildEntryIndex = NoIndex,
@@ -599,146 +483,11 @@ internal abstract class LevenshtrieCore<T>
         }
     }
 
-    public bool Remove(ReadOnlySpan<char> key, bool all, T? matchingValue, IEqualityComparer<T> comparer)
-    {
-        var entries = _entries;
-
-        ref var entry = ref _entries[0];
-
-        while (key.Length > 0)
-        {
-            Rune.DecodeFromUtf16((ReadOnlySpan<char>)key, out var nextRune, out var charsConsumed);
-            key = key[charsConsumed..];
-
-            var found = false;
-            var nextChildEntryIndex = entry.FirstChildEntryIndex;
-            while (nextChildEntryIndex != NoIndex)
-            {
-                entry = ref _entries[nextChildEntryIndex];
-
-                if (AreEqual(entry.EntryValue, nextRune))
-                {
-                    found = true;
-
-                    var entryTailDataLength = entry.TailDataLength;
-                    if (entryTailDataLength > 0)
-                    {
-                        var tailData = _tailData.AsSpan(entry.TailDataIndex, entry.TailDataLength);
-                        while (tailData.Length > 0 && key.Length > 0)
-                        {
-                            Rune.DecodeFromUtf16((ReadOnlySpan<char>)key, out nextRune, out charsConsumed);
-                            key = key[charsConsumed..];
-
-                            Rune.DecodeFromUtf16(tailData, out var tailRune, out charsConsumed);
-                            tailData = tailData[charsConsumed..];
-
-                            if (!AreEqual(nextRune, tailRune))
-                            {
-                                return false;
-                            }
-                        }
-
-                        if (tailData.Length > 0)
-                        {
-                            // We've consumed the key without consuming the tail data
-                            return false;
-                        }
-                    }
-
-                    break;
-                }
-
-                nextChildEntryIndex = entry.NextSiblingEntryIndex;
-            }
-
-            if (!found)
-            {
-                return false;
-            }
-        }
-
-        if (entry.ResultIndex is NoIndex)
-        {
-            return false;
-        }
-
-        // Here we need to find the right entries
-        // to be deleted and repair the linked list.
-
-        bool hasRemoved = false;
-
-        ref Result currResult = ref Unsafe.NullRef<Result>();
-        ref Result prevResult = ref Unsafe.NullRef<Result>();
-        var nextResultIndex = entry.ResultIndex;
-
-        while (nextResultIndex is not NoIndex)
-        {
-            currResult = ref _results[nextResultIndex];
-            var currResultIndex = nextResultIndex;
-            nextResultIndex = currResult.NextResultIndex;
-
-            if (all || comparer.Equals(currResult.Value, matchingValue))
-            {
-                hasRemoved = true;
-                AppendToFreeList(currResultIndex, ref currResult);
-                currResult.Value = default!;
-                if (Unsafe.IsNullRef(ref prevResult))
-                {
-                    entry.ResultIndex = nextResultIndex;
-                }
-                else
-                {
-                    prevResult.NextResultIndex = nextResultIndex;
-                }
-            }
-            else
-            {
-                // We only move the prev result if it's not deleted
-                // so that we can delete multiple consecutive entries
-                prevResult = ref currResult;
-            }
-        }
-
-        return hasRemoved;
-    }
-
-    private void AppendToFreeList(int resultIndex, ref Result result)
-    {
-        var prevFreeHeadIndex = _freeResultHeadIndex;
-        _freeResultHeadIndex = resultIndex;
-        result.NextResultIndex = prevFreeHeadIndex;
-        _freeResultCount++;
-    }
-
-    private int TakeResultSlot()
-    {
-        var freeIndex = _freeResultHeadIndex;
-        if (freeIndex is NoIndex)
-        {
-            EnsureResultsHasEmptySlots(spacesRequired: 1);
-            return _resultsSize++;
-        }
-        else
-        {
-            _freeResultCount--;
-            _freeResultHeadIndex = _results[freeIndex].NextResultIndex;
-            return freeIndex;
-        }
-    }
-
     private void EnsureEntriesHasEmptySlots(int spacesRequired)
     {
         while (_entries.Length - _entriesSize < spacesRequired)
         {
             Array.Resize(ref _entries, NextArraySize(_entries.Length));
-        }
-    }
-
-    private void EnsureResultsHasEmptySlots(int spacesRequired)
-    {
-        while (_results.Length - _resultsSize < spacesRequired)
-        {
-            Array.Resize(ref _results, NextArraySize(_results.Length));
         }
     }
 
@@ -750,88 +499,26 @@ internal abstract class LevenshtrieCore<T>
         }
     }
 
-    private static int NextArraySize(int currentSize) =>
+    protected static int NextArraySize(int currentSize) =>
         currentSize switch
         {
             < 16 => 16,
             _ => currentSize * 2
         };
-
-    [DebuggerDisplay("{EntryValue}")]
-    internal struct Entry
-    {
-        public Rune EntryValue;
-        public int TailDataIndex;
-        public int TailDataLength;
-        public int FirstChildEntryIndex;
-        public int NextSiblingEntryIndex;
-        public int ResultIndex;
-    }
-
-    [DebuggerDisplay("{Value}")]
-    internal struct Result
-    {
-        public T Value;
-        public int NextResultIndex;
-    }
-
-    internal struct Cursor(Result[] results, int index)
-    {
-        private Result[] _results = results;
-        private int _index = index;
-
-        public void ResetTo(int index) => _index = index;
-
-        public bool MoveNext([MaybeNullWhen(false)] out T value)
-        {
-            if (_index is NoIndex)
-            {
-                value = default;
-                return false;
-            }
-
-            ref var result = ref _results[_index];
-            value = result.Value;
-            _index = result.NextResultIndex;
-            return true;
-        }
-    }
 }
 
-internal sealed class CaseSensitiveLevenshtrieCore<T> : LevenshtrieCore<T>
+[DebuggerDisplay("{EntryValue}")]
+internal struct LevenshtrieCoreEntry
 {
-    public CaseSensitiveLevenshtrieCore(Entry root, bool allowMulti)
-        : base(root, allowMulti)
-    {
-
-    }
-
-    public override bool IgnoreCase => false;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private protected override bool AreEqual(Rune a, Rune b)
-        => default(CaseSensitive).Equals(a, b);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private protected override bool AreEqual(char a, char b)
-        => default(CaseSensitive).Equals(a, b);
+    public Rune EntryValue;
+    public int TailDataIndex;
+    public int TailDataLength;
+    public int FirstChildEntryIndex;
+    public int NextSiblingEntryIndex;
+    public int ResultIndex;
 }
 
-internal sealed class CaseInsensitiveLevenshtrieCore<T> : LevenshtrieCore<T>
+internal interface ILevenshtrieCursor<T>
 {
-    public override bool IgnoreCase => true;
-
-    public CaseInsensitiveLevenshtrieCore(Entry root, bool allowMulti)
-        : base(root, allowMulti)
-    {
-
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private protected override bool AreEqual(Rune a, Rune b)
-        => default(CaseInsensitive).Equals(a, b);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private protected override bool AreEqual(char a, char b)
-        => default(CaseInsensitive).Equals(a, b);
+    bool MoveNext([MaybeNullWhen(false)] out T value);
 }
