@@ -32,10 +32,7 @@ namespace Levenshtypo;
 /// The type of values stored in the set. Duplicate values for the same key are automatically
 /// collapsed using the provided or default <see cref="IEqualityComparer{T}"/>.
 /// </typeparam>
-public sealed class LevenshtrieSet<T> :
-    ILevenshtrie<T>,
-    ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>,
-    ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>>
+public sealed class LevenshtrieSet<T> : ILevenshtrie<T>
 {
     private readonly ILevenshtrieCoreSet<T> _coreTrie;
 
@@ -87,15 +84,9 @@ public sealed class LevenshtrieSet<T> :
         => _coreTrie.Search(searcher);
 
     /// <inheritdoc />
-    LevenshtrieSearchResult<T>[] ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>.ExecuteAutomaton<TSearchState>(TSearchState executionState) => Search(executionState);
-
-    /// <inheritdoc />
     public IEnumerable<LevenshtrieSearchResult<T>> EnumerateSearch<TSearchState>(TSearchState searcher)
         where TSearchState : ILevenshtomatonExecutionState<TSearchState>
         => _coreTrie.EnumerateSearch(searcher);
-
-    /// <inheritdoc />
-    IEnumerable<LevenshtrieSearchResult<T>> ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>>.ExecuteAutomaton<TState>(TState executionState) => EnumerateSearch(executionState);
 
     /// <summary>
     /// Determines whether the set contains any values under the specified key.

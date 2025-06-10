@@ -25,22 +25,12 @@ internal class FallbackLevenshtomaton<TCaseSensitivity> : Levenshtomaton where T
 
     public override LevenshtypoMetric Metric { get; }
 
-    public override T Execute<T>(ILevenshtomatonExecutor<T> executor)
+    public override TResult Execute<TExecutor, TResult>(TExecutor executor)
     {
         return Metric switch
         {
             LevenshtypoMetric.Levenshtein => executor.ExecuteAutomaton(LevenshteinState.Start(_sRune, maxEditDistance: MaxEditDistance)),
             LevenshtypoMetric.RestrictedEdit => executor.ExecuteAutomaton(RestrictedEditState.Start(_sRune, maxEditDistance: MaxEditDistance)),
-            _ => throw new NotSupportedException()
-        };
-    }
-
-    public override bool Matches(ReadOnlySpan<char> text, out int distance)
-    {
-        return Metric switch
-        {
-            LevenshtypoMetric.Levenshtein => DefaultMatchesImplementation(text, LevenshteinState.Start(_sRune, maxEditDistance: MaxEditDistance), out distance),
-            LevenshtypoMetric.RestrictedEdit => DefaultMatchesImplementation(text, RestrictedEditState.Start(_sRune, maxEditDistance: MaxEditDistance), out distance),
             _ => throw new NotSupportedException()
         };
     }

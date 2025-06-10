@@ -1,7 +1,5 @@
 ﻿#nullable enable
-abstract Levenshtypo.Levenshtomaton.Execute<T>(Levenshtypo.ILevenshtomatonExecutor<T>! executor) -> T
 abstract Levenshtypo.Levenshtomaton.IgnoreCase.get -> bool
-abstract Levenshtypo.Levenshtomaton.Matches(System.ReadOnlySpan<char> text, out int distance) -> bool
 abstract Levenshtypo.Levenshtomaton.Metric.get -> Levenshtypo.LevenshtypoMetric
 abstract Levenshtypo.Levenshtomaton.Start() -> Levenshtypo.LevenshtomatonExecutionState!
 abstract Levenshtypo.LevenshtomatonExecutionState.Distance.get -> int
@@ -19,7 +17,6 @@ Levenshtypo.ILevenshtrie<T>.IgnoreCase.get -> bool
 Levenshtypo.ILevenshtrie<T>.Search<TSearchState>(TSearchState searcher) -> Levenshtypo.LevenshtrieSearchResult<T>[]!
 Levenshtypo.LevenshteinDistance
 Levenshtypo.Levenshtomaton
-Levenshtypo.Levenshtomaton.Matches(System.ReadOnlySpan<char> text) -> bool
 Levenshtypo.Levenshtomaton.MaxEditDistance.get -> int
 Levenshtypo.Levenshtomaton.Text.get -> string!
 Levenshtypo.LevenshtomatonExecutionState

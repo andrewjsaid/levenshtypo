@@ -19,9 +19,7 @@ internal class Distance1RestrictedEditLevenshtomaton<TCaseSensitivity> : Levensh
 
     public override LevenshtypoMetric Metric => LevenshtypoMetric.RestrictedEdit;
 
-    public override T Execute<T>(ILevenshtomatonExecutor<T> executor) => executor.ExecuteAutomaton(StartSpecialized());
-
-    public override bool Matches(ReadOnlySpan<char> text, out int distance) => DefaultMatchesImplementation(text, StartSpecialized(), out distance);
+    public override TResult Execute<TExecutor, TResult>(TExecutor executor) => executor.ExecuteAutomaton(StartSpecialized());
 
     private State StartSpecialized() => State.Start(_sRune);
 

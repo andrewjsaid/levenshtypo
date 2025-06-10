@@ -20,21 +20,7 @@ internal sealed class Distance0Levenshtomaton<TCaseSensitivity> : Levenshtomaton
 
     public override LevenshtypoMetric Metric { get; }
 
-    public override T Execute<T>(ILevenshtomatonExecutor<T> executor) => executor.ExecuteAutomaton(StartSpecialized());
-
-    public override bool Matches(ReadOnlySpan<char> text, out int distance)
-    {
-        distance = 0;
-
-        if (IgnoreCase)
-        {
-            return text.Equals(_s.AsSpan(), StringComparison.OrdinalIgnoreCase);
-        }
-        else
-        {
-            return text.SequenceEqual(_s.AsSpan());
-        }
-    }
+    public override TResult Execute<TExecutor, TResult>(TExecutor executor) => executor.ExecuteAutomaton(StartSpecialized());
 
     private State StartSpecialized() => new State(_sRune, 0);
 

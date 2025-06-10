@@ -23,10 +23,7 @@ namespace Levenshtypo;
 /// </para>
 /// </summary>
 /// <typeparam name="T">The type of values stored in the trie.</typeparam>
-public sealed class Levenshtrie<T> :
-    ILevenshtrie<T>,
-    ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>,
-    ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>>
+public sealed class Levenshtrie<T> : ILevenshtrie<T>
 {
     private readonly ILevenshtrieCoreSingle<T> _coreTrie;
 
@@ -72,15 +69,9 @@ public sealed class Levenshtrie<T> :
         => _coreTrie.Search(searcher);
 
     /// <inheritdoc />
-    LevenshtrieSearchResult<T>[] ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>.ExecuteAutomaton<TSearchState>(TSearchState executionState) => Search(executionState);
-
-    /// <inheritdoc />
     public IEnumerable<LevenshtrieSearchResult<T>> EnumerateSearch<TSearchState>(TSearchState searcher)
         where TSearchState : ILevenshtomatonExecutionState<TSearchState>
         => _coreTrie.EnumerateSearch(searcher);
-
-    /// <inheritdoc />
-    IEnumerable<LevenshtrieSearchResult<T>> ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>>.ExecuteAutomaton<TState>(TState executionState) => EnumerateSearch(executionState);
 
     /// <summary>
     /// Determines whether the trie contains the specified key.

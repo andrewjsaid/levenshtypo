@@ -1,1 +1,8 @@
 ﻿#nullable enable
+abstract Levenshtypo.Levenshtomaton.Execute<TExecutor, TResult>(TExecutor executor) -> TResult
+Levenshtypo.LevenshtomatonExtensions
+static Levenshtypo.LevenshtomatonExtensions.Execute<TResult>(this Levenshtypo.Levenshtomaton! levenshtomaton, Levenshtypo.ILevenshtomatonExecutor<TResult>! executor) -> TResult
+static Levenshtypo.LevenshtomatonExtensions.Matches(this Levenshtypo.Levenshtomaton! automaton, System.ReadOnlySpan<char> text) -> bool
+static Levenshtypo.LevenshtomatonExtensions.Matches(this Levenshtypo.Levenshtomaton! automaton, System.ReadOnlySpan<char> text, out int distance) -> bool
+static Levenshtypo.LevenshtomatonExtensions.MatchesPrefix(this Levenshtypo.Levenshtomaton! automaton, System.ReadOnlySpan<char> text) -> bool
+static Levenshtypo.LevenshtomatonExtensions.MatchesPrefix(this Levenshtypo.Levenshtomaton! automaton, System.ReadOnlySpan<char> text, out int distance, out int prefixLength) -> bool

@@ -185,6 +185,25 @@ public class LevenshtomatonTests
         }
     }
 
+    [Theory]
+    [InlineData("12", "12345", LevenshtypoMetric.Levenshtein, 0, 2)]
+    [InlineData("124", "12345", LevenshtypoMetric.Levenshtein, 1, 2)]
+    [InlineData("1245", "123456789", LevenshtypoMetric.Levenshtein, 1, 5)]
+    public void SpecificPrefixTests(string automatonWord, string queryWord, LevenshtypoMetric metric, int distance, int prefixLength)
+    {
+        var automata = Construct(automatonWord, ignoreCase: false, metric: metric);
+        foreach (var automaton in automata)
+        {
+            var matchesPrefix = automaton.MatchesPrefix(queryWord, out var actualDistance, out var actualPrefixLength);
+            matchesPrefix.ShouldBe(distance <= automaton.MaxEditDistance);
+            if (matchesPrefix)
+            {
+                actualDistance.ShouldBe(distance);
+                actualPrefixLength.ShouldBe(prefixLength);
+            }
+        }
+    }
+
     private bool Matches(Levenshtomaton automaton, string word, int expectedEditDistance)
     {
         var matchesDirect = automaton.Matches(word, out var actualDistance);

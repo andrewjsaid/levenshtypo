@@ -27,7 +27,7 @@ internal class BitwiseLevenshteinLevenshtomaton<TCaseSensitivity> : Levenshtomat
 
     public override LevenshtypoMetric Metric => LevenshtypoMetric.Levenshtein;
 
-    public override T Execute<T>(ILevenshtomatonExecutor<T> executor)
+    public override TResult Execute<TExecutor, TResult>(TExecutor executor)
     {
         return MaxEditDistance switch
         {
@@ -61,44 +61,6 @@ internal class BitwiseLevenshteinLevenshtomaton<TCaseSensitivity> : Levenshtomat
             28 => executor.ExecuteAutomaton(State<BitwiseBuffers.BufferDistance28, ulong>.Start(_sRune)),
             29 => executor.ExecuteAutomaton(State<BitwiseBuffers.BufferDistance29, ulong>.Start(_sRune)),
             30 => executor.ExecuteAutomaton(State<BitwiseBuffers.BufferDistance30, ulong>.Start(_sRune)),
-            _ => throw new NotSupportedException()
-        };
-    }
-
-    public override bool Matches(ReadOnlySpan<char> text, out int distance)
-    {
-        return MaxEditDistance switch
-        {
-            01 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance1, byte>.Start(_sRune), out distance),
-            02 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance2, byte>.Start(_sRune), out distance),
-            03 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance3, byte>.Start(_sRune), out distance),
-            04 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance4, ushort>.Start(_sRune), out distance),
-            05 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance5, ushort>.Start(_sRune), out distance),
-            06 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance6, ushort>.Start(_sRune), out distance),
-            07 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance7, ushort>.Start(_sRune), out distance),
-            08 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance8, uint>.Start(_sRune), out distance),
-            09 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance9, uint>.Start(_sRune), out distance),
-            10 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance10, uint>.Start(_sRune), out distance),
-            11 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance11, uint>.Start(_sRune), out distance),
-            12 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance12, uint>.Start(_sRune), out distance),
-            13 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance13, uint>.Start(_sRune), out distance),
-            14 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance14, uint>.Start(_sRune), out distance),
-            15 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance15, uint>.Start(_sRune), out distance),
-            16 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance16, ulong>.Start(_sRune), out distance),
-            17 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance17, ulong>.Start(_sRune), out distance),
-            18 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance18, ulong>.Start(_sRune), out distance),
-            19 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance19, ulong>.Start(_sRune), out distance),
-            20 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance20, ulong>.Start(_sRune), out distance),
-            21 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance21, ulong>.Start(_sRune), out distance),
-            22 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance22, ulong>.Start(_sRune), out distance),
-            23 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance23, ulong>.Start(_sRune), out distance),
-            24 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance24, ulong>.Start(_sRune), out distance),
-            25 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance25, ulong>.Start(_sRune), out distance),
-            26 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance26, ulong>.Start(_sRune), out distance),
-            27 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance27, ulong>.Start(_sRune), out distance),
-            28 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance28, ulong>.Start(_sRune), out distance),
-            29 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance29, ulong>.Start(_sRune), out distance),
-            30 => DefaultMatchesImplementation(text, State<BitwiseBuffers.BufferDistance30, ulong>.Start(_sRune), out distance),
             _ => throw new NotSupportedException()
         };
     }

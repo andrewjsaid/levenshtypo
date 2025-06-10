@@ -1,6 +1,7 @@
 ﻿using BenchmarkDotNet.Attributes;
 using Levenshtypo;
 
+[ShortRunJob]
 public class LevenshtomatonMatchesTests
 {
     private const string FuzzyWord = "initiate";
@@ -18,7 +19,7 @@ public class LevenshtomatonMatchesTests
 
     [Params("initiate", "initialize", "initial")]
     public string TestWord { get; set; } = null!;
-
+    
     [Benchmark]
     public bool Distance0_Matches_HardCoded() => _automaton0HardCoded.Matches(TestWord);
 
@@ -33,10 +34,10 @@ public class LevenshtomatonMatchesTests
 
     [Benchmark]
     public bool Distance2_Matches_HardCoded() => _automaton2HardCoded.Matches(TestWord);
-
+    
     [Benchmark]
     public bool Distance2_Matches_Parameterized() => _automaton2Parameterized.Matches(TestWord);
-
+    
     [Benchmark]
     public bool Distance3_Matches_Parameterized() => _automaton3Parameterized.Matches(TestWord);
 }

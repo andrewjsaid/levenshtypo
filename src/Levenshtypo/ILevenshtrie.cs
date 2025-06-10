@@ -75,8 +75,8 @@ public static class LevenshtrieExtensions
             throw new ArgumentException("Case sensitivity of automaton does not match.");
         }
 
-        var executor = @this as ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]> ?? new TrieExecutor<T>(@this);
-        return automaton.Execute(executor);
+        var executor = new TrieExecutor<T>(@this);
+        return automaton.Execute<TrieExecutor<T>, LevenshtrieSearchResult<T>[]>(executor);
     }
 
     /// <summary>
@@ -135,7 +135,7 @@ public static class LevenshtrieExtensions
         }
 
         var executor = new TriePrefixExecutor<T>(@this);
-        return automaton.Execute<LevenshtrieSearchResult<T>[]>(executor);
+        return automaton.Execute<TriePrefixExecutor<T>, LevenshtrieSearchResult<T>[]>(executor);
     }
 
     /// <summary>
@@ -184,8 +184,8 @@ public static class LevenshtrieExtensions
             throw new ArgumentException("Case sensitivity of automaton does not match.");
         }
 
-        var executor = @this as ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>> ?? new TrieExecutor<T>(@this);
-        return automaton.Execute(executor);
+        var executor = new TrieExecutor<T>(@this);
+        return automaton.Execute<TrieExecutor<T>, IEnumerable<LevenshtrieSearchResult<T>>>(executor);
     }
 
     /// <summary>
@@ -235,7 +235,7 @@ public static class LevenshtrieExtensions
         }
 
         var executor = new TriePrefixExecutor<T>(@this);
-        return automaton.Execute<IEnumerable<LevenshtrieSearchResult<T>>>(executor);
+        return automaton.Execute<TriePrefixExecutor<T>, IEnumerable<LevenshtrieSearchResult<T>>>(executor);
     }
 
     /// <summary>
@@ -263,7 +263,7 @@ public static class LevenshtrieExtensions
         where TSearchState : ILevenshtomatonExecutionState<TSearchState>
         => @this.EnumerateSearch(PrefixTrackingLevenshtomatonExecutionState<TSearchState>.Start(searcher));
 
-    private class TrieExecutor<T>(ILevenshtrie<T> trie) :
+    private struct TrieExecutor<T>(ILevenshtrie<T> trie) :
         ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>,
         ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>>
     {
@@ -273,7 +273,7 @@ public static class LevenshtrieExtensions
         IEnumerable<LevenshtrieSearchResult<T>> ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>>.ExecuteAutomaton<TState>(TState executionState)
             => trie.EnumerateSearch(executionState);
     }
-    private class TriePrefixExecutor<T>(ILevenshtrie<T> trie) :
+    private struct TriePrefixExecutor<T>(ILevenshtrie<T> trie) :
         ILevenshtomatonExecutor<LevenshtrieSearchResult<T>[]>,
         ILevenshtomatonExecutor<IEnumerable<LevenshtrieSearchResult<T>>>
     {
