@@ -124,7 +124,7 @@ public class LevenshtrieSearchTests
 
     private static void Test(Levenshtrie<string> t, string query, int distance, IEnumerable<(string word, int distance)> expected)
     {
-        var expectedResults = expected.Select(e => new LevenshtrieSearchResult<string>(e.distance, e.word));
+        var expectedResults = expected.Select(e => new LevenshtrieSearchResult<string>(e.word, e.distance, LevenshtrieSearchKind.Full, metadata: 0));
 
         t.Search(query, distance)
             .ShouldBe(expectedResults, ignoreOrder: true, comparer: new LevenshtrieSearchResultEqualityComparer<string>());

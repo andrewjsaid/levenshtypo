@@ -124,7 +124,11 @@ public class LevenshtrieSearchByPrefixTests
             return;
         }
 
-        var expectedResults = list.Select(e => new LevenshtrieSearchResult<string>(CalculatePrefixDistance(query, e), e));
+        var expectedResults = list.Select(e =>
+        {
+            var (distance, metadata) = CalculatePrefixDistance(query, e);
+            return new LevenshtrieSearchResult<string>(e, distance, LevenshtrieSearchKind.Prefix, metadata);
+        }).ToArray();
 
         t.SearchByPrefix(query, distance)
             .ShouldBe(expectedResults, ignoreOrder: true, comparer: new LevenshtrieSearchResultEqualityComparer<string>());
@@ -133,9 +137,11 @@ public class LevenshtrieSearchByPrefixTests
             .ShouldBe(expectedResults, ignoreOrder: true, comparer: new LevenshtrieSearchResultEqualityComparer<string>());
     }
 
-    private static int CalculatePrefixDistance(string query, string result)
+    private static (int distance, int metadata) CalculatePrefixDistance(string query, string result)
     {
         int minDistance = int.MaxValue;
+        int totalLength = 0;
+        int minDistanceSuffix = 0;
 
         var automaton = LevenshtomatonFactory.Instance.Construct(query, maxEditDistance: 5);
 
@@ -144,21 +150,38 @@ public class LevenshtrieSearchByPrefixTests
         if (state.IsFinal && state.Distance < minDistance)
         {
             minDistance = state.Distance;
+            minDistanceSuffix = 0;
         }
+
+        bool stop = false;
 
         foreach (var r in result.EnumerateRunes())
         {
-            if (!state.MoveNext(r, out state))
+            totalLength++;
+            minDistanceSuffix++;
+
+            if (stop)
             {
-                break;
+                continue;
             }
 
-            if (state.IsFinal && state.Distance < minDistance)
+            if (!state.MoveNext(r, out state))
             {
-                minDistance = state.Distance;
+                stop = true;
+                continue;
+            }
+
+            if (!stop)
+            {
+                if (state.IsFinal && state.Distance < minDistance)
+                {
+                    minDistance = state.Distance;
+                    minDistanceSuffix = 0;
+                }
             }
         }
 
-        return minDistance;
+        var metadata = PrefixMetadataUtils.EncodeMetadata(totalLength - minDistanceSuffix, minDistanceSuffix);
+        return (minDistance, metadata);
     }
 }

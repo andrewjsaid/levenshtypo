@@ -52,6 +52,12 @@ public interface ILevenshtomatonExecutionState<TSelf> where TSelf : ILevenshtoma
     /// The value is meaningful only when <see cref="IsFinal"/> is <c>true</c>.
     /// </remarks>
     int Distance { get; }
+
+    internal virtual bool TryGetPrefixSearchMetadata(out int metadata)
+    {
+        metadata = default!;
+        return false;
+    }
 }
 
 /// <summary>

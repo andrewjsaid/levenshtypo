@@ -114,7 +114,6 @@ internal sealed class LevenshtrieCoreSet<T, TCaseSensitivity>
     /// If the result is <c>false</c>, you may append a new result entry by updating the <c>NextResultIndex</c>
     /// of the node at <paramref name="matchOrTailIndex"/>.
     /// </remarks>
-
     private bool FollowFindIndex(int index, uint hashCode, T value, out int matchOrTailIndex, out int chainLength)
     {
         chainLength = 0;

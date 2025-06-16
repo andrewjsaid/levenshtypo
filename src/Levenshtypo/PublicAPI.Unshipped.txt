@@ -1,8 +1,17 @@
 ﻿#nullable enable
 abstract Levenshtypo.Levenshtomaton.Execute<TExecutor, TResult>(TExecutor executor) -> TResult
 Levenshtypo.LevenshtomatonExtensions
+Levenshtypo.LevenshtrieSearchKind
+Levenshtypo.LevenshtrieSearchKind.Full = 0 -> Levenshtypo.LevenshtrieSearchKind
+Levenshtypo.LevenshtrieSearchKind.Prefix = 1 -> Levenshtypo.LevenshtrieSearchKind
+Levenshtypo.LevenshtrieSearchResult<T>.Kind.get -> Levenshtypo.LevenshtrieSearchKind
+Levenshtypo.LevenshtrieSearchResult<T>.TryGetPrefixSearchMetadata(out Levenshtypo.LevenshtrieSearchResultPrefixMetadata metadata) -> bool
+Levenshtypo.LevenshtrieSearchResultPrefixMetadata
+Levenshtypo.LevenshtrieSearchResultPrefixMetadata.LevenshtrieSearchResultPrefixMetadata() -> void
+Levenshtypo.LevenshtrieSearchResultPrefixMetadata.PrefixLength.get -> int
+Levenshtypo.LevenshtrieSearchResultPrefixMetadata.SuffixLength.get -> int
 static Levenshtypo.LevenshtomatonExtensions.Execute<TResult>(this Levenshtypo.Levenshtomaton! levenshtomaton, Levenshtypo.ILevenshtomatonExecutor<TResult>! executor) -> TResult
 static Levenshtypo.LevenshtomatonExtensions.Matches(this Levenshtypo.Levenshtomaton! automaton, System.ReadOnlySpan<char> text) -> bool
 static Levenshtypo.LevenshtomatonExtensions.Matches(this Levenshtypo.Levenshtomaton! automaton, System.ReadOnlySpan<char> text, out int distance) -> bool
 static Levenshtypo.LevenshtomatonExtensions.MatchesPrefix(this Levenshtypo.Levenshtomaton! automaton, System.ReadOnlySpan<char> text) -> bool
-static Levenshtypo.LevenshtomatonExtensions.MatchesPrefix(this Levenshtypo.Levenshtomaton! automaton, System.ReadOnlySpan<char> text, out int distance, out int prefixLength) -> bool
+static Levenshtypo.LevenshtomatonExtensions.MatchesPrefix(this Levenshtypo.Levenshtomaton! automaton, System.ReadOnlySpan<char> text, out int distance, out int prefixLength, out int suffixLength) -> bool

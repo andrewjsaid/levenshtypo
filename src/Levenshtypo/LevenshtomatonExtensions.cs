@@ -26,7 +26,7 @@ public static class LevenshtomatonExtensions
     /// <c>true</c> if <paramref name="text"/> is accepted by the automaton;
     /// otherwise, <c>false</c>.
     /// </returns>
-    public static bool MatchesPrefix(this Levenshtomaton automaton, ReadOnlySpan<char> text) => automaton.MatchesPrefix(text, out _, out _);
+    public static bool MatchesPrefix(this Levenshtomaton automaton, ReadOnlySpan<char> text) => automaton.MatchesPrefix(text, out _, out _, out _);
 
     /// <summary>
     /// Determines whether any prefix of <see cref="Text"/> is accepted by this automaton
@@ -39,34 +39,42 @@ public static class LevenshtomatonExtensions
     /// When it returns <c>false</c>, the value is undefined.
     /// </param>
     /// <param name="prefixLength">
-    /// When this method returns <c>true</c>, contains the length of the prefix in
-    /// <see cref="Text"/> which best matched the automaton.
+    /// When this method returns <c>true</c>, contains the length (in Runes) of the prefix
+    /// in <see cref="Text"/> which best matched the automaton.
+    /// </param>
+    /// <param name="prefixLength">
+    /// When this method returns <c>true</c>, contains the length (in Runes) of the suffix
+    /// required when using the best match.
     /// </param>
     /// <returns>
     /// <c>true</c> if <paramref name="text"/> is accepted by the automaton;
     /// otherwise, <c>false</c>.
     /// </returns>
-    public static bool MatchesPrefix(this Levenshtomaton automaton, ReadOnlySpan<char> text, out int distance, out int prefixLength)
+    public static bool MatchesPrefix(this Levenshtomaton automaton, ReadOnlySpan<char> text, out int distance, out int prefixLength, out int suffixLength)
     {
 #if NET9_0_OR_GREATER
         var result = automaton.Execute<MatchesPrefixExecutor, MatchesPrefixExecutor.Result>(new MatchesPrefixExecutor(text));
         distance = result.Distance;
         prefixLength = result.PrefixLength;
+        suffixLength = result.SuffixLength;
         return result.Matches;
 #else
         var isPrefix = false;
         var bestDistance = int.MaxValue;
         var bestPrefixLength = 0;
+        var bestSuffixLength = 0;
 
         var charLength = 0;
         var executionState = automaton.Start();
+        var stop = false;
         foreach (var c in text.EnumerateRunes())
         {
+            bestSuffixLength++;
             charLength += c.Utf16SequenceLength;
 
-            if (!executionState.MoveNext(c, out executionState))
+            if (stop || !executionState.MoveNext(c, out executionState))
             {
-                break;
+                continue;
             }
 
             if (executionState.IsFinal && bestDistance > executionState.Distance)
@@ -79,6 +87,7 @@ public static class LevenshtomatonExtensions
 
         distance = bestDistance;
         prefixLength = bestPrefixLength;
+        suffixLength = bestSuffixLength;
         return isPrefix;
 #endif
     }
@@ -113,8 +122,8 @@ public static class LevenshtomatonExtensions
         distance = result.Distance;
         return result.Matches;
 #else
-       var executionState = automaton.Start();
-       foreach (var rune in text.EnumerateRunes())
+        var executionState = automaton.Start();
+        foreach (var rune in text.EnumerateRunes())
         {
             if (!executionState.MoveNext(rune, out executionState))
             {
@@ -174,37 +183,44 @@ internal ref struct MatchesPrefixExecutor(ReadOnlySpan<char> text) : ILevenshtom
     {
         var isPrefix = false;
         var bestDistance = int.MaxValue;
+        var bestSuffixLength = 0;
         var prefixLength = 0;
 
         var text = _text;
         var charLength = 0;
+        bool stop = false;
         while (text.Length > 0)
         {
             Rune.DecodeFromUtf16(text, out var c, out var consumed);
             charLength += consumed;
             text = text[consumed..];
 
-            if (!executionState.MoveNext(c, out executionState))
+            bestSuffixLength++;
+
+            if (stop || !executionState.MoveNext(c, out executionState))
             {
-                break;
+                stop = true;
+                continue;
             }
 
             if (executionState.IsFinal && bestDistance > executionState.Distance)
             {
                 isPrefix = true;
                 bestDistance = executionState.Distance;
+                bestSuffixLength = 0;
                 prefixLength = charLength;
             }
         }
 
-        return new Result (isPrefix, bestDistance, prefixLength);
+        return new Result (isPrefix, bestDistance, prefixLength, bestSuffixLength);
     }
 
-    public struct Result(bool matches, int distance, int prefixLength)
+    public struct Result(bool matches, int distance, int prefixLength, int suffixLength)
     {
         public bool Matches { get; } = matches;
         public int Distance { get; } = distance;
         public int PrefixLength { get; } = prefixLength;
+        public int SuffixLength { get; } = suffixLength;
     }
 }
 

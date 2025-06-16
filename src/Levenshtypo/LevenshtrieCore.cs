@@ -184,7 +184,8 @@ internal abstract class LevenshtrieCore<T, TCaseSensitivity, TCursor>
                 var cursor = CreateCursor(entry.ResultIndex);
                 while (cursor.MoveNext(out var result))
                 {
-                    results.Add(new LevenshtrieSearchResult<T>(searchState.Distance, result));
+                    var searchKind = searchState.TryGetPrefixSearchMetadata(out var metadata) ? LevenshtrieSearchKind.Prefix : LevenshtrieSearchKind.Full;
+                    results.Add(new LevenshtrieSearchResult<T>(result, searchState.Distance, searchKind, metadata));
                 }
             }
 
@@ -230,6 +231,8 @@ internal abstract class LevenshtrieCore<T, TCaseSensitivity, TCursor>
         private readonly LevenshtrieCore<T, TCaseSensitivity, TCursor> _trie;
         private readonly Stack<(int entryIndex, TSearchState searchState)> _state = new();
         private int _cursorDistance;
+        private LevenshtrieSearchKind _cursorSearchKind;
+        private int _cursorMetadata;
         private TCursor _cursor;
 
         public SearchEnumerator(LevenshtrieCore<T, TCaseSensitivity, TCursor> trie, TSearchState initialState)
@@ -250,7 +253,7 @@ internal abstract class LevenshtrieCore<T, TCaseSensitivity, TCursor>
         restart:
             if (_cursor.MoveNext(out var result))
             {
-                Current = new LevenshtrieSearchResult<T>(_cursorDistance, result);
+                Current = new LevenshtrieSearchResult<T>(result, _cursorDistance, _cursorSearchKind, _cursorMetadata);
                 return true;
             }
 
@@ -282,6 +285,8 @@ internal abstract class LevenshtrieCore<T, TCaseSensitivity, TCursor>
                 if (searchState.IsFinal && entry.ResultIndex is not NoIndex)
                 {
                     _cursorDistance = searchState.Distance;
+                    _cursorSearchKind = searchState.TryGetPrefixSearchMetadata(out var metadata) ? LevenshtrieSearchKind.Prefix : LevenshtrieSearchKind.Full;
+                    _cursorMetadata = metadata;
                     _cursor = _trie.CreateCursor(entry.ResultIndex);
                     goto restart;
                 }

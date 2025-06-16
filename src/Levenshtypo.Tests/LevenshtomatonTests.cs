@@ -194,12 +194,13 @@ public class LevenshtomatonTests
         var automata = Construct(automatonWord, ignoreCase: false, metric: metric);
         foreach (var automaton in automata)
         {
-            var matchesPrefix = automaton.MatchesPrefix(queryWord, out var actualDistance, out var actualPrefixLength);
+            var matchesPrefix = automaton.MatchesPrefix(queryWord, out var actualDistance, out var actualPrefixLength, out var actualSuffixLength);
             matchesPrefix.ShouldBe(distance <= automaton.MaxEditDistance);
             if (matchesPrefix)
             {
                 actualDistance.ShouldBe(distance);
                 actualPrefixLength.ShouldBe(prefixLength);
+                actualSuffixLength.ShouldBe(queryWord.Length - prefixLength);
             }
         }
     }
