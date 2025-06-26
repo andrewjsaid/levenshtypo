@@ -1,4 +1,5 @@
 ﻿#nullable enable
+abstract Levenshtypo.Levenshtomaton.Execute<TExecutor, TResult>(TExecutor executor) -> TResult
 abstract Levenshtypo.Levenshtomaton.IgnoreCase.get -> bool
 abstract Levenshtypo.Levenshtomaton.Metric.get -> Levenshtypo.LevenshtypoMetric
 abstract Levenshtypo.Levenshtomaton.Start() -> Levenshtypo.LevenshtomatonExecutionState!
@@ -21,6 +22,7 @@ Levenshtypo.Levenshtomaton.MaxEditDistance.get -> int
 Levenshtypo.Levenshtomaton.Text.get -> string!
 Levenshtypo.LevenshtomatonExecutionState
 Levenshtypo.LevenshtomatonExecutionState.LevenshtomatonExecutionState() -> void
+Levenshtypo.LevenshtomatonExtensions
 Levenshtypo.LevenshtomatonFactory
 Levenshtypo.LevenshtomatonFactory.Construct(string! s, int maxEditDistance, bool ignoreCase = false, Levenshtypo.LevenshtypoMetric metric = Levenshtypo.LevenshtypoMetric.Levenshtein) -> Levenshtypo.Levenshtomaton!
 Levenshtypo.Levenshtrie
@@ -35,10 +37,19 @@ Levenshtypo.Levenshtrie<T>.this[System.ReadOnlySpan<char> key].get -> T
 Levenshtypo.Levenshtrie<T>.this[System.ReadOnlySpan<char> key].set -> void
 Levenshtypo.Levenshtrie<T>.TryGetValue(System.ReadOnlySpan<char> key, out T value) -> bool
 Levenshtypo.LevenshtrieExtensions
+Levenshtypo.LevenshtrieSearchKind
+Levenshtypo.LevenshtrieSearchKind.Full = 0 -> Levenshtypo.LevenshtrieSearchKind
+Levenshtypo.LevenshtrieSearchKind.Prefix = 1 -> Levenshtypo.LevenshtrieSearchKind
 Levenshtypo.LevenshtrieSearchResult<T>
 Levenshtypo.LevenshtrieSearchResult<T>.Distance.get -> int
+Levenshtypo.LevenshtrieSearchResult<T>.Kind.get -> Levenshtypo.LevenshtrieSearchKind
 Levenshtypo.LevenshtrieSearchResult<T>.LevenshtrieSearchResult() -> void
 Levenshtypo.LevenshtrieSearchResult<T>.Result.get -> T
+Levenshtypo.LevenshtrieSearchResult<T>.TryGetPrefixSearchMetadata(out Levenshtypo.LevenshtrieSearchResultPrefixMetadata metadata) -> bool
+Levenshtypo.LevenshtrieSearchResultPrefixMetadata
+Levenshtypo.LevenshtrieSearchResultPrefixMetadata.LevenshtrieSearchResultPrefixMetadata() -> void
+Levenshtypo.LevenshtrieSearchResultPrefixMetadata.PrefixLength.get -> int
+Levenshtypo.LevenshtrieSearchResultPrefixMetadata.SuffixLength.get -> int
 Levenshtypo.LevenshtrieSet<T>
 Levenshtypo.LevenshtrieSet<T>.Add(System.ReadOnlySpan<char> key, T value) -> bool
 Levenshtypo.LevenshtrieSet<T>.Contains(System.ReadOnlySpan<char> key, T value) -> bool
@@ -61,6 +72,11 @@ static Levenshtypo.LevenshteinDistance.Calculate(System.ReadOnlySpan<char> a, Sy
 static Levenshtypo.LevenshteinDistance.Levenshtein(System.ReadOnlySpan<char> a, System.ReadOnlySpan<char> b, bool ignoreCase = false) -> int
 static Levenshtypo.LevenshteinDistance.RestrictedEdit(System.ReadOnlySpan<char> a, System.ReadOnlySpan<char> b, bool ignoreCase = false) -> int
 static Levenshtypo.LevenshtomatonExecutionState.FromStruct<TState>(TState state) -> Levenshtypo.LevenshtomatonExecutionState!
+static Levenshtypo.LevenshtomatonExtensions.Execute<TResult>(this Levenshtypo.Levenshtomaton! levenshtomaton, Levenshtypo.ILevenshtomatonExecutor<TResult>! executor) -> TResult
+static Levenshtypo.LevenshtomatonExtensions.Matches(this Levenshtypo.Levenshtomaton! automaton, System.ReadOnlySpan<char> text) -> bool
+static Levenshtypo.LevenshtomatonExtensions.Matches(this Levenshtypo.Levenshtomaton! automaton, System.ReadOnlySpan<char> text, out int distance) -> bool
+static Levenshtypo.LevenshtomatonExtensions.MatchesPrefix(this Levenshtypo.Levenshtomaton! automaton, System.ReadOnlySpan<char> text) -> bool
+static Levenshtypo.LevenshtomatonExtensions.MatchesPrefix(this Levenshtypo.Levenshtomaton! automaton, System.ReadOnlySpan<char> text, out int distance, out int prefixLength, out int suffixLength) -> bool
 static Levenshtypo.LevenshtomatonFactory.Instance.get -> Levenshtypo.LevenshtomatonFactory!
 static Levenshtypo.Levenshtrie.Create<T>(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, T>>! source, bool ignoreCase = false) -> Levenshtypo.Levenshtrie<T>!
 static Levenshtypo.Levenshtrie.CreateEmpty<T>(bool ignoreCase = false) -> Levenshtypo.Levenshtrie<T>!
