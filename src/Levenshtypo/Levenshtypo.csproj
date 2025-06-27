@@ -5,25 +5,39 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Nullable>enable</Nullable>
+    <LangVersion>13</LangVersion>
+    <IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))">true</IsAotCompatible>
   </PropertyGroup>
-  
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Levenshtypo.Benchmarks" />
+    <InternalsVisibleTo Include="Levenshtypo.Tests" />
+    <InternalsVisibleTo Include="Levenshtypo.Generator" />
+  </ItemGroup>
+
   <PropertyGroup>
     <PackageId>Levenshtypo</PackageId>
     <Title>Levenshtypo</Title>
     <Authors>Andrew J Said</Authors>
-    <LangVersion>13</LangVersion>
     <Description>
-Levenshtypo is a high-performance fuzzy string matcher for .NET.
+      Levenshtypo is a high-performance fuzzy string matcher for .NET.
 
-It lets you perform typo-tolerant lookups on large string datasets using a fast Trie + Levenshtein Automaton approach. Ideal for search boxes, spell-checking, command matchers, and voice/OCR normalization.
+      It lets you perform typo-tolerant lookups on large string datasets using a fast Trie + Levenshtein Automaton approach. Ideal for search boxes, spell-checking, command matchers, and voice/OCR normalization.
 
-Supports:
+      Supports:
 
-- Levenshtein and Restricted Edit distances
-- Efficient Trie indexing
-- Raw Levenshtein Automaton generation
+      - Levenshtein and Restricted Edit distances
+      - Efficient Trie indexing
+      - Raw Levenshtein Automaton generation
 
-Blazing fast. Alloc-friendly. Plug-and-play.
+      Blazing fast. Alloc-friendly. Plug-and-play.
     </Description>
     <Copyright>MIT</Copyright>
     <PackageProjectUrl>https://github.com/andrewjsaid/levenshtypo</PackageProjectUrl>
@@ -36,23 +50,6 @@ Blazing fast. Alloc-friendly. Plug-and-play.
     <Version>1.8.0</Version>
     <Product>Levenshtypo</Product>
   </PropertyGroup>
-
-  <PropertyGroup>
-    <IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))">true</IsAotCompatible>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <InternalsVisibleTo Include="Levenshtypo.Benchmarks" />
-    <InternalsVisibleTo Include="Levenshtypo.Tests" />
-    <InternalsVisibleTo Include="Levenshtypo.Generator" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
 
   <ItemGroup>
     <None Include="..\..\images\logo.png">
