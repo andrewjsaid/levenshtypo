@@ -578,7 +578,7 @@ internal abstract class ParameterizedLevenshtomaton : Levenshtomaton
         public bool IsTranspositionState;
     }
 
-    [DebuggerDisplay("MatchingChar: {MatchingChar}, Index: {MatchingStateIndex}")]
+    [DebuggerDisplay("Offset: {MatchingCharacterOffset}, Index: {MatchingStateIndex}")]
     internal struct NfaTransition
     {
         public const int MatchesAnyChar = -1;

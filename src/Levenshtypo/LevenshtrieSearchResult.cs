@@ -38,7 +38,7 @@ public readonly struct LevenshtrieSearchResult<T>
     /// Gets the kind of search that produced this result, indicating whether it was a full fuzzy search or a prefix-based search.
     /// </summary>
     /// <remarks>
-    /// Use this property to determine whether metadata like <see cref="GetPrefixMetadata"/> is applicable.
+    /// Use this property to determine whether metadata like <see cref="LevenshtrieSearchResultPrefixMetadata"/> is applicable.
     /// </remarks>
     public LevenshtrieSearchKind Kind { get; }
 

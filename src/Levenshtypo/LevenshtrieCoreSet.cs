@@ -89,12 +89,12 @@ internal sealed class LevenshtrieCoreSet<T, TCaseSensitivity>
 
     /// <summary>
     /// Traverses a linked list of result entries starting at <paramref name="index"/>,
-    /// searching for a result that matches the specified <paramref name="hash"/> and <paramref name="value"/>.
+    /// searching for a result that matches the specified <paramref name="hashCode"/> and <paramref name="value"/>.
     /// </summary>
     /// <param name="index">
     /// The index of the first entry in the result chain. This acts as the head of the linked list to traverse.
     /// </param>
-    /// <param name="hash">
+    /// <param name="hashCode">
     /// The precomputed hash of the value being searched. Used for fast preliminary filtering.
     /// </param>
     /// <param name="value">
@@ -106,7 +106,7 @@ internal sealed class LevenshtrieCoreSet<T, TCaseSensitivity>
     /// - If no match is found, this is set to the index of the final entry in the chain.
     /// </param>
     /// <returns>
-    /// <c>true</c> if an entry matching the <paramref name="hash"/> and <paramref name="value"/> is found;
+    /// <c>true</c> if an entry matching the <paramref name="hashCode"/> and <paramref name="value"/> is found;
     /// otherwise, <c>false</c>.
     /// </returns>
     /// <remarks>
@@ -293,7 +293,7 @@ internal sealed class LevenshtrieCoreSet<T, TCaseSensitivity>
             headIndex = bucketHeads[hash % bucketHeads.Length];
         }
 
-        return FollowFindIndex(headIndex, hash, value, out var foundIndex, out _);
+        return FollowFindIndex(headIndex, hash, value, out _, out _);
     }
 
     public LevenshtrieCoreSetCursor<T> GetValues(ReadOnlySpan<char> key)
@@ -323,7 +323,7 @@ internal sealed class LevenshtrieCoreSet<T, TCaseSensitivity>
         }
 
         Span<int> stackSpace = stackalloc int[1];
-        scoped Span<int> prevBuckets = Span<int>.Empty;
+        scoped Span<int> prevBuckets;
 
         if (IsLargeIndex(entry.ResultIndex, out var largeIndex))
         {

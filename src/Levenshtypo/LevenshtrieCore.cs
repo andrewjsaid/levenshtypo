@@ -13,7 +13,7 @@ namespace Levenshtypo;
 ///
 /// <para>
 /// This abstract base class handles the core character traversal and storage mechanics of a trie
-/// using <see cref="ReadOnlySpan{char}"/> as input keys. It maps normalized strings to an internal
+/// using <see cref="ReadOnlySpan{Char}"/> as input keys. It maps normalized strings to an internal
 /// <c>int resultIndex</c>, which acts as an opaque reference to the associated data.
 /// </para>
 ///
@@ -83,7 +83,7 @@ internal abstract class LevenshtrieCore<T, TCaseSensitivity, TCursor>
     {
         var entries = _entries;
 
-        ref var entry = ref _entries[0];
+        ref var entry = ref entries[0];
 
         while (key.Length > 0)
         {
@@ -94,7 +94,7 @@ internal abstract class LevenshtrieCore<T, TCaseSensitivity, TCursor>
             var nextChildEntryIndex = entry.FirstChildEntryIndex;
             while (nextChildEntryIndex != NoIndex)
             {
-                entry = ref _entries[nextChildEntryIndex];
+                entry = ref entries[nextChildEntryIndex];
 
                 if (default(TCaseSensitivity).Equals(entry.EntryValue, nextRune))
                 {
@@ -150,11 +150,11 @@ internal abstract class LevenshtrieCore<T, TCaseSensitivity, TCursor>
     {
         // This algorithm is recursive but that means that there's a risk of StackOverflow.
         // Thus we break recursion at a certain depth.
-        const int MaxStackDepth = 20;
+        const int maxStackDepth = 20;
 
         var results = new List<LevenshtrieSearchResult<T>>();
         Queue<(int entryIndex, TSearchState searchState)>? processQueue = null;
-        Process(0, searcher, MaxStackDepth);
+        Process(0, searcher, maxStackDepth);
 
         if (processQueue is not null)
         {
@@ -162,7 +162,7 @@ internal abstract class LevenshtrieCore<T, TCaseSensitivity, TCursor>
             {
                 var (entryIndex, searchState) = processQueue.Dequeue();
 
-                Process(entryIndex, searchState, MaxStackDepth);
+                Process(entryIndex, searchState, maxStackDepth);
             }
         }
 
@@ -304,7 +304,7 @@ internal abstract class LevenshtrieCore<T, TCaseSensitivity, TCursor>
         EnsureEntriesHasEmptySlots(2);
 
         var entries = _entries;
-        ref var entry = ref _entries[0];
+        ref var entry = ref entries[0];
 
         while (key.Length > 0)
         {
@@ -316,7 +316,7 @@ internal abstract class LevenshtrieCore<T, TCaseSensitivity, TCursor>
             var nextChildEntryIndex = entry.FirstChildEntryIndex;
             while (nextChildEntryIndex != NoIndex)
             {
-                ref var childEntry = ref _entries[nextChildEntryIndex];
+                ref var childEntry = ref entries[nextChildEntryIndex];
 
                 if (default(TCaseSensitivity).Equals(childEntry.EntryValue, nextRune))
                 {
@@ -403,7 +403,7 @@ internal abstract class LevenshtrieCore<T, TCaseSensitivity, TCursor>
             // Split the node mid-way through the tail data
             var parentTailData = _tailData.AsSpan(parentEntry.TailDataIndex, parentEntry.TailDataLength);
             var parentTailDataKeep = splitParentEntryChars - parentEntry.EntryValue.Utf16SequenceLength;
-            parentTailData = parentTailData.Slice(parentTailDataKeep);
+            parentTailData = parentTailData[parentTailDataKeep..];
             Rune.DecodeFromUtf16(parentTailData, out var tailDataHeadRune, out var tailDataHeadConsumed);
 
             // Tail data should be moved to its own node
@@ -464,7 +464,7 @@ internal abstract class LevenshtrieCore<T, TCaseSensitivity, TCursor>
                 TailDataLength = newBranchTailData.Length
             };
 
-            if (parentEntry.FirstChildEntryIndex is var childEntryIndex && childEntryIndex is not NoIndex)
+            if (parentEntry.FirstChildEntryIndex is var childEntryIndex and not NoIndex)
             {
                 while (_entries[childEntryIndex].NextSiblingEntryIndex is var nextSiblingEntryIndex && nextSiblingEntryIndex is not NoIndex)
                 {

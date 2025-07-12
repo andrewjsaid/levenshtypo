@@ -158,7 +158,7 @@ internal struct LevenshtrieCoreSingleCursor<T>(T[] results, int index) : ILevens
 {
     private const int NoIndex = -1;
 
-    private T[] _results = results;
+    private readonly T[] _results = results;
     private int _index = index;
 
     public bool MoveNext([MaybeNullWhen(false)] out T value)

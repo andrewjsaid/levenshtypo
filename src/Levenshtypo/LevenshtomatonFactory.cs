@@ -140,6 +140,4 @@ public sealed class LevenshtomatonFactory
                 }
         }
     }
-
-    private record struct TemplateKey(int MaxEditDistance, LevenshtypoMetric Metric);
 }
